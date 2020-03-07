@@ -220,13 +220,27 @@ void MainWindow::slot_SerialDataReceived()
 {
     const QByteArray buf = _serialPort->readAll();
     QString txt = _demux->addData(buf);
-    if (txt.size() > 0) // NOTE: QString::isEmpty() ignore whitespace, so we have to check the size instead
+    if (!txt.isEmpty())
     {
-        _textLog->moveCursor(QTextCursor::End);
-        txt.replace(QString("\n"), QString("<br/>"));
-        _textLog->insertHtml(txt); // NOTE: STMBL firmware outputs HTML to change the text color to red apparently...
-        // _textLog->insertPlainText(txt);
-        _textLog->moveCursor(QTextCursor::End);
+        // some serious ugliness to work around a bug
+        // where QTextEdit (or QTextDocument?) effectively
+        // deletes trailing HTML <br/>'s, so we must use
+        // plain text newlines to trick it
+        const QStringList lines = txt.split("\n", QString::KeepEmptyParts);
+        for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
+        {
+            _textLog->moveCursor(QTextCursor::End);
+            if (it != lines.begin())
+            {
+                _textLog->insertPlainText("\n");
+                _textLog->moveCursor(QTextCursor::End);
+            }
+            if (!it->isEmpty())
+            {
+                _textLog->insertHtml(*it);
+                _textLog->moveCursor(QTextCursor::End);
+            }
+        }
     }
 }
 

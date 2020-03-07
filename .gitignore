@@ -1,0 +1,8 @@
+# C++ objects
+*.o
+
+# qmake/MOC generated files
+.qmake.stash
+Makefile
+moc_*.cpp
+moc_*.h

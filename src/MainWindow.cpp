@@ -33,6 +33,7 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QDebug>
+#include <QDialog>
 
 #include "MainWindow.h"
 #include "ScopeDataDemux.h"
@@ -52,6 +53,8 @@ MainWindow::MainWindow(QWidget *parent) :
     _disconnectButton(new QPushButton("Disconnect")),
     _clearButton(new QPushButton("Clear")),
     _resetButton(new QPushButton("Reset")),
+    _configButton(new QPushButton("Config")),
+    _configDialog(new QDialog()),
     _chartView(new QChartView),
     _chart(new QChart),
     // _chartData(),
@@ -67,6 +70,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
     _textLog->setReadOnly(true);
     setAcceptDrops(true);
+    _configDialog->setModal(true);
 
     // set up chart
     _chart->setMinimumSize(600, 256);
@@ -114,6 +118,7 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addSeparator();
         toolbar->addWidget(_clearButton);
         toolbar->addWidget(_resetButton);
+        toolbar->addWidget(_configButton);
         addToolBar(toolbar);
     }
     {
@@ -135,6 +140,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
     connect(_resetButton, SIGNAL(clicked()), this, SLOT(slot_ResetClicked()));
+    connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
     connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
     connect(_lineEdit, SIGNAL(returnPressed()), _sendButton, SLOT(click()));
     connect(_sendButton, SIGNAL(clicked()), this, SLOT(slot_SendClicked()));
@@ -202,6 +208,11 @@ void MainWindow::slot_ResetClicked()
     }
     _serialPort->write(QString("fault0.en = 0\n").toLatin1());
     _serialPort->write(QString("fault0.en = 1\n").toLatin1());
+}
+
+void MainWindow::slot_ConfigClicked()
+{
+     _configDialog->show();
 }
 
 void MainWindow::slot_SendClicked()

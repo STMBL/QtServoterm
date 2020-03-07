@@ -52,6 +52,7 @@ protected slots:
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
     void slot_ResetClicked();
+    void slot_ConfigClicked();
     void slot_SendClicked();
     void slot_SerialDataReceived();
     // void slot_SerialPortClosed();
@@ -75,6 +76,8 @@ protected:
     QPushButton *_disconnectButton;
     QPushButton *_clearButton;
     QPushButton *_resetButton;
+    QPushButton *_configButton;
+    QDialog     *_configDialog;
     QT_CHARTS_NAMESPACE::QChartView *_chartView;
     QT_CHARTS_NAMESPACE::QChart *_chart;
     QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];

@@ -50,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _portList(new QComboBox),
     _connectButton(new QPushButton("Connect")),
     _disconnectButton(new QPushButton("Disconnect")),
+    _clearButton(new QPushButton("Clear")),
     _chartView(new QChartView),
     _chart(new QChart),
     // _chartData(),
@@ -109,6 +110,8 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addWidget(_portList);
         toolbar->addWidget(_connectButton);
         toolbar->addWidget(_disconnectButton);
+        toolbar->addSeparator();
+        toolbar->addWidget(_clearButton);
         _connectButton->setEnabled(false);
         _disconnectButton->setEnabled(false);
         addToolBar(toolbar);
@@ -130,6 +133,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_portList, SIGNAL(currentIndexChanged(const QString &)), this, SLOT(slot_SelectedPortChanged(const QString &)));
     connect(_connectButton, SIGNAL(clicked()), this, SLOT(slot_ConnectClicked()));
     connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
+    connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
     connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_TextChanged()));
     connect(_lineEdit, SIGNAL(returnPressed()), _sendButton, SLOT(click()));
     connect(_sendButton, SIGNAL(clicked()), this, SLOT(slot_SendClicked()));
@@ -137,7 +141,9 @@ MainWindow::MainWindow(QWidget *parent) :
     // connect(_serialPort, SIGNAL(readChannelFinished()), this, SLOT(slot_SerialPortClosed())); // NOTE: doesn't seem to actually work
     connect(_demux, SIGNAL(scopePacketReceived(const QVector<float> &)), this, SLOT(slot_ScopePacketReceived(const QVector<float> &)));
     connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
-    slot_TextChanged(); // update the initial state of the Send button
+    connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_TextLogChanged()));
+    slot_TextLogChanged(); // set the initial state of the Clear button
+    slot_TextChanged(); // set the initial state of the Send button
 
     _RepopulateDeviceList();
     _loadSettings();
@@ -195,6 +201,11 @@ void MainWindow::slot_DisconnectClicked()
     _EnableOrDisableConnectButton();
     _disconnectButton->setEnabled(false);
     slot_TextChanged(); // to disable the Send button
+}
+
+void MainWindow::slot_TextLogChanged()
+{
+    _clearButton->setEnabled(!_textLog->document()->isEmpty());
 }
 
 void MainWindow::slot_TextChanged()

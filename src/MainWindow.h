@@ -52,6 +52,7 @@ protected slots:
     void slot_SelectedPortChanged(const QString &val);
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
+    void slot_TextLogChanged();
     void slot_TextChanged();
     void slot_SendClicked();
     void slot_SerialDataReceived();
@@ -74,6 +75,7 @@ protected:
     QComboBox *_portList;
     QPushButton *_connectButton;
     QPushButton *_disconnectButton;
+    QPushButton *_clearButton;
     QT_CHARTS_NAMESPACE::QChartView *_chartView;
     QT_CHARTS_NAMESPACE::QChart *_chart;
     QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];

@@ -1,5 +1,9 @@
-# C++ objects
+# user-specific project settings
+servoterm.pro.user
+
+# built objects and executables
 *.o
+Servoterm
 
 # qmake/MOC generated files
 .qmake.stash

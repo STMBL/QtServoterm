@@ -51,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _connectButton(new QPushButton("Connect")),
     _disconnectButton(new QPushButton("Disconnect")),
     _clearButton(new QPushButton("Clear")),
+    _resetButton(new QPushButton("Reset")),
     _chartView(new QChartView),
     _chart(new QChart),
     // _chartData(),
@@ -112,8 +113,7 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addWidget(_disconnectButton);
         toolbar->addSeparator();
         toolbar->addWidget(_clearButton);
-        _connectButton->setEnabled(false);
-        _disconnectButton->setEnabled(false);
+        toolbar->addWidget(_resetButton);
         addToolBar(toolbar);
     }
     {
@@ -130,20 +130,20 @@ MainWindow::MainWindow(QWidget *parent) :
         setCentralWidget(dummy);
     }
 
-    connect(_portList, SIGNAL(currentIndexChanged(const QString &)), this, SLOT(slot_SelectedPortChanged(const QString &)));
+    connect(_portList, SIGNAL(currentIndexChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
     connect(_connectButton, SIGNAL(clicked()), this, SLOT(slot_ConnectClicked()));
     connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
-    connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_TextChanged()));
+    connect(_resetButton, SIGNAL(clicked()), this, SLOT(slot_ResetClicked()));
+    connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
     connect(_lineEdit, SIGNAL(returnPressed()), _sendButton, SLOT(click()));
     connect(_sendButton, SIGNAL(clicked()), this, SLOT(slot_SendClicked()));
     connect(_serialPort, SIGNAL(readyRead()), this, SLOT(slot_SerialDataReceived()));
     // connect(_serialPort, SIGNAL(readChannelFinished()), this, SLOT(slot_SerialPortClosed())); // NOTE: doesn't seem to actually work
     connect(_demux, SIGNAL(scopePacketReceived(const QVector<float> &)), this, SLOT(slot_ScopePacketReceived(const QVector<float> &)));
     connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
-    connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_TextLogChanged()));
-    slot_TextLogChanged(); // set the initial state of the Clear button
-    slot_TextChanged(); // set the initial state of the Send button
+    connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_UpdateButtons()));
+    slot_UpdateButtons();
 
     _RepopulateDeviceList();
     _loadSettings();
@@ -151,12 +151,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-}
-
-void MainWindow::slot_SelectedPortChanged(const QString &val)
-{
-    Q_UNUSED(val); // we opt to reach into the _portList directly inside the helper function
-    _EnableOrDisableConnectButton();
 }
 
 void MainWindow::slot_ConnectClicked()
@@ -179,9 +173,7 @@ void MainWindow::slot_ConnectClicked()
         return;
     }
     _textLog->append("<font color=\"FireBrick\">connected</font><br/>");
-    _connectButton->setEnabled(false);
-    _disconnectButton->setEnabled(true);
-    slot_TextChanged(); // to possibly enable the Send button
+    slot_UpdateButtons();
 }
 
 void MainWindow::slot_DisconnectClicked()
@@ -198,19 +190,18 @@ void MainWindow::slot_DisconnectClicked()
         return;
     }
     _textLog->append("<font color=\"FireBrick\">disconnected</font><br/>");
-    _EnableOrDisableConnectButton();
-    _disconnectButton->setEnabled(false);
-    slot_TextChanged(); // to disable the Send button
+    slot_UpdateButtons();
 }
 
-void MainWindow::slot_TextLogChanged()
+void MainWindow::slot_ResetClicked()
 {
-    _clearButton->setEnabled(!_textLog->document()->isEmpty());
-}
-
-void MainWindow::slot_TextChanged()
-{
-    _sendButton->setEnabled(!_lineEdit->text().isEmpty() && _serialPort->isOpen());
+    if (!_serialPort->isOpen())
+    {
+        QMessageBox::warning(this, "Error sending reset commands", "Serial port not open!");
+        return;
+    }
+    _serialPort->write(QString("fault0.en = 0\n").toLatin1());
+    _serialPort->write(QString("fault0.en = 1\n").toLatin1());
 }
 
 void MainWindow::slot_SendClicked()
@@ -222,14 +213,14 @@ void MainWindow::slot_SendClicked()
     }
     const QString line = _lineEdit->text();
     _lineEdit->clear();
-        _serialPort->write((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
+    _serialPort->write((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
 }
 
 void MainWindow::slot_SerialDataReceived()
 {
     const QByteArray buf = _serialPort->readAll();
     QString txt = _demux->addData(buf);
-    if (!txt.isEmpty())
+    if (txt.size() > 0) // NOTE: QString::isEmpty() ignore whitespace, so we have to check the size instead
     {
         _textLog->moveCursor(QTextCursor::End);
         txt.replace(QString("\n"), QString("<br/>"));
@@ -292,6 +283,18 @@ void MainWindow::slot_ScopeResetReceived()
     _scopeX = 0; // TODO
 }
 
+void MainWindow::slot_UpdateButtons()
+{
+    const bool portSelected = !_portList->currentText().isEmpty();
+    const bool portOpen = _serialPort->isOpen();
+    const bool hasCommand = !_lineEdit->text().isEmpty();
+    _connectButton->setEnabled(!portOpen && portSelected);
+    _disconnectButton->setEnabled(portOpen);
+    _clearButton->setEnabled(!_textLog->document()->isEmpty());
+    _resetButton->setEnabled(portOpen);
+    _sendButton->setEnabled(portOpen && hasCommand);
+}
+
 /*void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
     event->acceptProposedAction();
@@ -349,11 +352,6 @@ void MainWindow::_RepopulateDeviceList()
             _portList->addItem(it->portName());
         }
     }
-}
-
-void MainWindow::_EnableOrDisableConnectButton()
-{
-    _connectButton->setEnabled(!_portList->currentText().isEmpty());
 }
 
 void MainWindow::_saveSettings()

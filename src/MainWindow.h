@@ -49,16 +49,15 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 protected slots:
-    void slot_SelectedPortChanged(const QString &val);
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
-    void slot_TextLogChanged();
-    void slot_TextChanged();
+    void slot_ResetClicked();
     void slot_SendClicked();
     void slot_SerialDataReceived();
     // void slot_SerialPortClosed();
     void slot_ScopePacketReceived(const QVector<float> &packet);
     void slot_ScopeResetReceived();
+    void slot_UpdateButtons();
 protected:
     /*void dragEnterEvent(QDragEnterEvent *event);
     void dragMoveEvent(QDragMoveEvent *event);
@@ -66,7 +65,6 @@ protected:
     void dropEvent(QDropEvent *event);*/
     void closeEvent(QCloseEvent *event);
     void _RepopulateDeviceList();
-    void _EnableOrDisableConnectButton();
     void _saveSettings();
     void _loadSettings();
 
@@ -76,6 +74,7 @@ protected:
     QPushButton *_connectButton;
     QPushButton *_disconnectButton;
     QPushButton *_clearButton;
+    QPushButton *_resetButton;
     QT_CHARTS_NAMESPACE::QChartView *_chartView;
     QT_CHARTS_NAMESPACE::QChart *_chart;
     QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];

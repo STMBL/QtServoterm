@@ -285,7 +285,7 @@ void MainWindow::slot_ScopePacketReceived(const QVector<float> &packet)
     {
         QLineSeries * const series = _chartData[channel];
         const float yValue = packet[channel];
-        if (series->count() < SAMPLE_WINDOW_LENGTH)
+        if (_scopeX >= series->count())
             series->append(_scopeX, yValue);
         else
             series->replace(_scopeX, _scopeX, yValue);

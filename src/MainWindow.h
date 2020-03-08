@@ -55,6 +55,7 @@ protected slots:
     void slot_DisconnectClicked();
     void slot_ResetClicked();
     void slot_ConfigClicked();
+    void slot_ConfigReceiveTimeout();
     void slot_SendClicked();
     void slot_SerialDataReceived();
     // void slot_SerialPortClosed();
@@ -94,7 +95,9 @@ protected:
     QPlainTextEdit *_configEdit;
     QPushButton *_configSaveButton;
     QLabel *_configSizeLabel;
+    QTimer *_redirectingTimer;
     int _scopeX;
+    bool _redirectingToConfigEdit;
 };
 
 } // namespace STMBL_Servoterm

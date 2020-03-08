@@ -70,7 +70,9 @@ MainWindow::MainWindow(QWidget *parent) :
     _configEdit(new QPlainTextEdit),
     _configSaveButton(new QPushButton("Save")),
     _configSizeLabel(new QLabel),
-    _scopeX(0)
+    _redirectingTimer(new QTimer(this)),
+    _scopeX(0),
+    _redirectingToConfigEdit(false)
 {
     _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
     _textLog->setReadOnly(true);
@@ -80,6 +82,8 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSizeLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     _configSizeLabel->setAlignment((_configSizeLabel->alignment() & ~Qt::AlignHorizontal_Mask) | Qt::AlignRight);
     _configSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    _redirectingTimer->setInterval(100);
+    _redirectingTimer->setSingleShot(true);
     
     // populate config dialog
     {
@@ -172,6 +176,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
     connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_UpdateButtons()));
     connect(_configEdit, SIGNAL(textChanged()), this, SLOT(slot_ConfigTextChanged()));
+    connect(_redirectingTimer, SIGNAL(timeout()), this, SLOT(slot_ConfigReceiveTimeout()));
     slot_ConfigTextChanged(); // show the initial byte count
     slot_UpdateButtons();
 
@@ -236,7 +241,16 @@ void MainWindow::slot_ResetClicked()
 
 void MainWindow::slot_ConfigClicked()
 {
-     _configDialog->exec();
+    _redirectingTimer->start();
+    _redirectingToConfigEdit = true;
+    _configEdit->clear();
+    _serialPort->write(QString("showconf\n").toLatin1());
+    _configDialog->exec();
+}
+
+void MainWindow::slot_ConfigReceiveTimeout()
+{
+    _redirectingToConfigEdit = false;
 }
 
 void MainWindow::slot_SendClicked()
@@ -251,10 +265,9 @@ void MainWindow::slot_SendClicked()
     _serialPort->write((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
 }
 
-void MainWindow::slot_SerialDataReceived()
+template<typename T, typename M>
+static void AppendTextToEdit(T &target, M insertMethod, const QString &txt)
 {
-    const QByteArray buf = _serialPort->readAll();
-    QString txt = _demux->addData(buf);
     if (!txt.isEmpty())
     {
         // some serious ugliness to work around a bug
@@ -264,19 +277,29 @@ void MainWindow::slot_SerialDataReceived()
         const QStringList lines = txt.split("\n", QString::KeepEmptyParts);
         for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
         {
-            _textLog->moveCursor(QTextCursor::End);
+            target.moveCursor(QTextCursor::End);
             if (it != lines.begin())
             {
-                _textLog->insertPlainText("\n");
-                _textLog->moveCursor(QTextCursor::End);
+                target.insertPlainText("\n");
+                target.moveCursor(QTextCursor::End);
             }
             if (!it->isEmpty())
             {
-                _textLog->insertHtml(*it);
-                _textLog->moveCursor(QTextCursor::End);
+                (target.*insertMethod)(*it);
+                target.moveCursor(QTextCursor::End);
             }
         }
     }
+}
+
+void MainWindow::slot_SerialDataReceived()
+{
+    const QByteArray buf = _serialPort->readAll();
+    const QString txt = _demux->addData(buf);
+    if (_redirectingToConfigEdit)
+        AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
+    else
+        AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
 }
 
 /*void MainWindow::slot_SerialPortClosed()

@@ -27,7 +27,9 @@
 #include <QValueAxis>
 #include <QLineSeries>
 #include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QLineEdit>
+#include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -54,7 +56,6 @@ MainWindow::MainWindow(QWidget *parent) :
     _clearButton(new QPushButton("Clear")),
     _resetButton(new QPushButton("Reset")),
     _configButton(new QPushButton("Config")),
-    _configDialog(new QDialog()),
     _chartView(new QChartView),
     _chart(new QChart),
     // _chartData(),
@@ -65,12 +66,33 @@ MainWindow::MainWindow(QWidget *parent) :
     _serialPort(new QSerialPort(this)),
     _settings(nullptr),
     _demux(new ScopeDataDemux(this)),
+    _configDialog(new QDialog(this)),
+    _configEdit(new QPlainTextEdit),
+    _configSaveButton(new QPushButton("Save")),
+    _configSizeLabel(new QLabel),
     _scopeX(0)
 {
     _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
     _textLog->setReadOnly(true);
     setAcceptDrops(true);
+    _configDialog->setWindowTitle("STMBL Configuration");
     _configDialog->setModal(true);
+    _configSizeLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    _configSizeLabel->setAlignment((_configSizeLabel->alignment() & ~Qt::AlignHorizontal_Mask) | Qt::AlignRight);
+    _configSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    
+    // populate config dialog
+    {
+        QVBoxLayout * const vbox = new QVBoxLayout(_configDialog);
+        vbox->addWidget(_configEdit);
+        
+        {
+            QHBoxLayout * const hbox = new QHBoxLayout;
+            hbox->addWidget(_configSaveButton);
+            hbox->addWidget(_configSizeLabel, 1);
+            vbox->addLayout(hbox);
+        }
+    }
 
     // set up chart
     _chart->setMinimumSize(600, 256);
@@ -149,6 +171,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_demux, SIGNAL(scopePacketReceived(const QVector<float> &)), this, SLOT(slot_ScopePacketReceived(const QVector<float> &)));
     connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
     connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_UpdateButtons()));
+    connect(_configEdit, SIGNAL(textChanged()), this, SLOT(slot_ConfigTextChanged()));
+    slot_ConfigTextChanged(); // show the initial byte count
     slot_UpdateButtons();
 
     _RepopulateDeviceList();
@@ -212,7 +236,7 @@ void MainWindow::slot_ResetClicked()
 
 void MainWindow::slot_ConfigClicked()
 {
-     _configDialog->show();
+     _configDialog->exec();
 }
 
 void MainWindow::slot_SendClicked()
@@ -305,7 +329,15 @@ void MainWindow::slot_ScopePacketReceived(const QVector<float> &packet)
 
 void MainWindow::slot_ScopeResetReceived()
 {
-    _scopeX = 0; // TODO
+    _scopeX = 0;
+}
+
+void MainWindow::slot_ConfigTextChanged()
+{
+    // NOTE: the -1 is to disregard an invisible
+    // "paragraph separator", see the following post:
+    // https://bugreports.qt.io/browse/QTBUG-4841
+    _configSizeLabel->setText(QString::number(qMax(0, _configEdit->document()->characterCount()-1)) + " bytes");
 }
 
 void MainWindow::slot_UpdateButtons()
@@ -318,6 +350,7 @@ void MainWindow::slot_UpdateButtons()
     _clearButton->setEnabled(!_textLog->document()->isEmpty());
     _resetButton->setEnabled(portOpen);
     _sendButton->setEnabled(portOpen && hasCommand);
+    _configSaveButton->setEnabled(false); // TODO make it follow portOpen
 }
 
 /*void MainWindow::dragEnterEvent(QDragEnterEvent *event)

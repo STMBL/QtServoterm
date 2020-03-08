@@ -27,7 +27,9 @@ QT_BEGIN_NAMESPACE
 class QComboBox;
 class QPushButton;
 class QTextEdit;
+class QPlainTextEdit;
 class QLineEdit;
+class QLabel;
 class QSerialPort;
 class QSettings;
 QT_END_NAMESPACE
@@ -58,6 +60,7 @@ protected slots:
     // void slot_SerialPortClosed();
     void slot_ScopePacketReceived(const QVector<float> &packet);
     void slot_ScopeResetReceived();
+    void slot_ConfigTextChanged();
     void slot_UpdateButtons();
 protected:
     /*void dragEnterEvent(QDragEnterEvent *event);
@@ -77,7 +80,6 @@ protected:
     QPushButton *_clearButton;
     QPushButton *_resetButton;
     QPushButton *_configButton;
-    QDialog     *_configDialog;
     QT_CHARTS_NAMESPACE::QChartView *_chartView;
     QT_CHARTS_NAMESPACE::QChart *_chart;
     QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];
@@ -88,6 +90,10 @@ protected:
     QSerialPort *_serialPort;
     QSettings *_settings;
     ScopeDataDemux *_demux;
+    QDialog *_configDialog;
+    QPlainTextEdit *_configEdit;
+    QPushButton *_configSaveButton;
+    QLabel *_configSizeLabel;
     int _scopeX;
 };
 

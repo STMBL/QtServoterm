@@ -72,6 +72,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSaveButton(new QPushButton("Save")),
     _configSizeLabel(new QLabel),
     _redirectingTimer(new QTimer(this)),
+    _serialSendTimer(new QTimer(this)),
     _scopeX(0),
     _redirectingToConfigEdit(false)
 {
@@ -85,6 +86,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
+	_serialSendTimer->setInterval(50);
     
     // populate config dialog
     {
@@ -168,6 +170,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
     connect(_resetButton, SIGNAL(clicked()), this, SLOT(slot_ResetClicked()));
     connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
+    connect(_configSaveButton, SIGNAL(clicked()), this, SLOT(slot_SaveClicked()));
     connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
     connect(_lineEdit, SIGNAL(returnPressed()), _sendButton, SLOT(click()));
     connect(_sendButton, SIGNAL(clicked()), this, SLOT(slot_SendClicked()));
@@ -178,6 +181,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_UpdateButtons()));
     connect(_configEdit, SIGNAL(textChanged()), this, SLOT(slot_ConfigTextChanged()));
     connect(_redirectingTimer, SIGNAL(timeout()), this, SLOT(slot_ConfigReceiveTimeout()));
+    connect(_serialSendTimer, SIGNAL(timeout()), this, SLOT(slot_SerialSendFromQueue()));
     slot_ConfigTextChanged(); // show the initial byte count
     slot_UpdateButtons();
 
@@ -252,9 +256,36 @@ void MainWindow::slot_ConfigClicked()
     _configDialog->exec();
 }
 
+void MainWindow::slot_SaveClicked()
+{
+	if (_serialPort->isOpen())
+	{
+		const QStringList lines = _configEdit->document()->toPlainText().split('\n', QString::KeepEmptyParts);
+		_txQueue.clear();
+		_txQueue.append("deleteconf");
+		for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
+		{
+			_txQueue.append(QString("appendconf ") + *it);
+		}
+		_txQueue.append("flashsaveconf");
+		_serialSendTimer->start();
+		slot_SerialSendFromQueue();
+	}
+}
+
 void MainWindow::slot_ConfigReceiveTimeout()
 {
     _redirectingToConfigEdit = false;
+}
+
+void MainWindow::slot_SerialSendFromQueue()
+{
+	if (!_serialPort->isOpen())
+		_txQueue.clear();
+	if (!_txQueue.isEmpty())
+		_serialPort->write((_txQueue.takeFirst() + '\n').toLatin1());
+	if (_txQueue.isEmpty())
+		_serialSendTimer->stop();
 }
 
 void MainWindow::slot_SendClicked()
@@ -384,7 +415,7 @@ void MainWindow::slot_UpdateButtons()
     _clearButton->setEnabled(!_textLog->document()->isEmpty());
     _resetButton->setEnabled(portOpen);
     _sendButton->setEnabled(portOpen && hasCommand);
-    _configSaveButton->setEnabled(false); // TODO make it follow portOpen
+    _configSaveButton->setEnabled(portOpen);
 }
 
 /*void MainWindow::dragEnterEvent(QDragEnterEvent *event)

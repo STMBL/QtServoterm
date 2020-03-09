@@ -22,6 +22,7 @@
 
 #include <QMainWindow>
 #include <QChartGlobal>
+#include <QStringList>
 
 QT_BEGIN_NAMESPACE
 class QComboBox;
@@ -55,7 +56,9 @@ protected slots:
     void slot_DisconnectClicked();
     void slot_ResetClicked();
     void slot_ConfigClicked();
+    void slot_SaveClicked();
     void slot_ConfigReceiveTimeout();
+    void slot_SerialSendFromQueue();
     void slot_SendClicked();
     void slot_SerialDataReceived();
     // void slot_SerialPortClosed();
@@ -96,6 +99,8 @@ protected:
     QPushButton *_configSaveButton;
     QLabel *_configSizeLabel;
     QTimer *_redirectingTimer;
+    QTimer *_serialSendTimer;
+	QStringList _txQueue;
     int _scopeX;
     bool _redirectingToConfigEdit;
 };

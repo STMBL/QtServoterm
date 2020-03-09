@@ -242,10 +242,13 @@ void MainWindow::slot_ResetClicked()
 
 void MainWindow::slot_ConfigClicked()
 {
-    _redirectingTimer->start();
-    _redirectingToConfigEdit = true;
-    _configEdit->clear();
-    _serialPort->write(QString("showconf\n").toLatin1());
+	if (_serialPort->isOpen())
+	{
+		_redirectingTimer->start();
+		_redirectingToConfigEdit = true;
+		_configEdit->clear();
+		_serialPort->write(QString("showconf\n").toLatin1());
+	}
     _configDialog->exec();
 }
 

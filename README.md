@@ -8,7 +8,7 @@ Qt version of stmbl Servoterm. It is still a work in progress, stay tuned!
 
 The relevant development packages to install on Ubuntu 18.04 are:
 
-* qtbase5-dev
+* qt5-default
 * libqt5charts5-dev
 * libqt5serialport5-dev
 

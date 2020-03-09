@@ -414,6 +414,7 @@ void MainWindow::slot_UpdateButtons()
     _disconnectButton->setEnabled(portOpen);
     _clearButton->setEnabled(!_textLog->document()->isEmpty());
     _resetButton->setEnabled(portOpen);
+    _configButton->setEnabled(portOpen);
     _sendButton->setEnabled(portOpen && hasCommand);
     _configSaveButton->setEnabled(portOpen);
 }

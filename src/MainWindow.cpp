@@ -270,7 +270,7 @@ void MainWindow::slot_SendClicked()
 template<typename T, typename M>
 static void AppendTextToEdit(T &target, M insertMethod, const QString &txt)
 {
-    if (!txt.isEmpty())
+    if (!txt.isEmpty()) // may be redundant, we check outside this function
     {
         // some serious ugliness to work around a bug
         // where QTextEdit (or QTextDocument?) effectively
@@ -298,10 +298,16 @@ void MainWindow::slot_SerialDataReceived()
 {
     const QByteArray buf = _serialPort->readAll();
     const QString txt = _demux->addData(buf);
-    if (_redirectingToConfigEdit)
-        AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
-    else
-        AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
+	if (!txt.isEmpty())
+	{
+		if (_redirectingToConfigEdit)
+		{
+			_redirectingTimer->start(); // extend (restart) timer to delay timeout
+			AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
+		}
+		else
+			AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
+	}
 }
 
 /*void MainWindow::slot_SerialPortClosed()

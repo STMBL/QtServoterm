@@ -28,7 +28,6 @@ class QComboBox;
 class QPushButton;
 class QTextEdit;
 class QPlainTextEdit;
-class QLineEdit;
 class QLabel;
 class QSerialPort;
 class QSettings;
@@ -42,6 +41,7 @@ QT_CHARTS_END_NAMESPACE
 
 namespace STMBL_Servoterm {
 
+class HistoryLineEdit;
 class ScopeDataDemux;
 
 class MainWindow : public QMainWindow
@@ -86,7 +86,7 @@ protected:
     QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];
     QT_CHARTS_NAMESPACE::QLineSeries *_chartRollingLine;
     QTextEdit *_textLog;
-    QLineEdit *_lineEdit;
+    HistoryLineEdit *_lineEdit;
     QPushButton *_sendButton;
     QSerialPort *_serialPort;
     QSettings *_settings;

@@ -38,6 +38,7 @@
 #include <QDialog>
 
 #include "MainWindow.h"
+#include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
 
 QT_CHARTS_USE_NAMESPACE
@@ -61,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // _chartData(),
     _chartRollingLine(new QLineSeries),
     _textLog(new QTextEdit),
-    _lineEdit(new QLineEdit),
+    _lineEdit(new HistoryLineEdit),
     _sendButton(new QPushButton("Send")),
     _serialPort(new QSerialPort(this)),
     _settings(nullptr),
@@ -261,6 +262,7 @@ void MainWindow::slot_SendClicked()
         return;
     }
     const QString line = _lineEdit->text();
+	_lineEdit->saveLine();
     _lineEdit->clear();
     _serialPort->write((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
 }

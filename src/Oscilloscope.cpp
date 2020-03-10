@@ -52,6 +52,9 @@ void Oscilloscope::addChannelsSample(const QVector<float> &channelsSample)
         return;
 
     // add/overwrite the appropriate sample
+    const int h = height();
+    // HACK for some reason, updating less than a 4 pixel wide strip results in flickering, I need to investigate...
+    update(_scopeX-1, 0, 4, h); // update affected lines
     if (_scopeX < _channelsSamples.size())
         _channelsSamples[_scopeX] = channelsSample;
     else
@@ -71,6 +74,30 @@ void Oscilloscope::resetScanning()
     _SetScopeX(0);
 }
 
+static void DrawSampleRange(const QVector< QVector<float> > &channelsSamples, int start, int end, int h, QPainter &painter)
+{
+    const int numSamples = end - start;
+    if (numSamples <= 0)
+        return;
+    QPolygon points;
+    points.reserve(numSamples);
+    for (int channel = 0; channel < SCOPE_CHANNEL_COUNT; channel++)
+    {
+        points.resize(0);
+        for (int sample = start; sample < end; sample++)
+        {
+            const int x = sample;
+            const int y = qBound(0, static_cast<int>(h/2 - static_cast<float>(h/2)*channelsSamples[sample].at(channel)), h-1);
+            points.append(QPoint(x, y));
+        }
+        painter.setPen(SCOPE_CHANNEL_COLORS[channel]);
+        if (points.size() == 1)
+            painter.drawPoint(points.at(0));
+        else
+            painter.drawPolyline(points);
+    }
+}
+
 void Oscilloscope::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -83,23 +110,14 @@ void Oscilloscope::paintEvent(QPaintEvent *event)
     painter.drawLine(0, h/2, w-1, h/2);
 
     // a very slight optimization
-    if (_channelsSamples.isEmpty())
-        return;
-
-    QVector<QPoint> points;
-    const int numSamples = _channelsSamples.size();
-    points.resize(numSamples);
-    for (int channel = 0; channel < SCOPE_CHANNEL_COUNT; channel++)
+    if (!_channelsSamples.isEmpty())
     {
-        for (int sample = 0; sample < numSamples; sample++)
-        {
-            const int x = sample;
-            const int y = qBound(0, static_cast<int>(h/2 - static_cast<float>(h/2)*_channelsSamples[sample].at(channel)), h-1);
-            points[sample] = QPoint(x, y);
-        }
-        painter.setPen(SCOPE_CHANNEL_COLORS[channel]);
-        painter.drawPolyline(points);
+        DrawSampleRange(_channelsSamples, 0, _scopeX, h, painter);
+        DrawSampleRange(_channelsSamples, _scopeX, _channelsSamples.size(), h, painter);
     }
+    painter.setPen(Qt::red);
+    // painter.drawLine(_scopeX, 0, _scopeX, h-1);
+    painter.drawRect(_scopeX, 0, 20, h);
 }
 
 void Oscilloscope::resizeEvent(QResizeEvent *event)
@@ -119,8 +137,8 @@ void Oscilloscope::_SetScopeX(int newX)
     const int h = height();
     const int oldX = _scopeX;
     _scopeX = newX;
-    update(QRect(oldX, 0, 1, h));
-    update(QRect(newX, 0, 1, h));
+    update(oldX, 0, 1, h);
+    update(newX, 0, 1, h);
 }
 
 } // namespace STMBL_Servoterm

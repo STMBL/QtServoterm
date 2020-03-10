@@ -45,6 +45,10 @@ namespace STMBL_Servoterm {
 static const quint16 STMBL_USB_VENDOR_ID  = 0x0483; //  1155
 static const quint16 STMBL_USB_PRODUCT_ID = 0x5740; // 22336
 
+// forward declaration
+template<typename T, typename M>
+static void AppendTextToEdit(T &target, M insertMethod, const QString &txt);
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     _portList(new QComboBox),
@@ -175,7 +179,8 @@ void MainWindow::slot_ConnectClicked()
         QMessageBox::critical(this, "Error opening serial port", "Unable to open port \"" + portName + "\"");
         return;
     }
-    _textLog->append("<font color=\"FireBrick\">connected</font><br/>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">connected</font>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
     slot_UpdateButtons();
 }
 
@@ -192,7 +197,8 @@ void MainWindow::slot_DisconnectClicked()
         QMessageBox::critical(this, "Error closing serial port", "Unknown reason -- it is open, but cannot be closed?");
         return;
     }
-    _textLog->append("<font color=\"FireBrick\">disconnected</font><br/>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
     slot_UpdateButtons();
 }
 
@@ -209,6 +215,7 @@ void MainWindow::slot_ResetClicked()
 
 void MainWindow::slot_JogToggled(bool on)
 {
+    Q_UNUSED(on);
     _DoJogging();
 }
 

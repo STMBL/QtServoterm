@@ -31,14 +31,14 @@ class HistoryLineEdit : public QLineEdit
 {
     Q_OBJECT
 public:
-	HistoryLineEdit(QWidget *widget = nullptr);
-	void saveLine();
+    HistoryLineEdit(QWidget *widget = nullptr);
+    void saveLine();
 protected:
-	void keyPressEvent(QKeyEvent *event);
-	void keyReleaseEvent(QKeyEvent *event);
-	
-	QStringList _history;
-	QStringList::iterator _current;
+    void keyPressEvent(QKeyEvent *event);
+    void keyReleaseEvent(QKeyEvent *event);
+    
+    QStringList _history;
+    QStringList::iterator _current;
 };
 
 } // namespace STMBL_Servoterm

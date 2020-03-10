@@ -86,7 +86,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
-	_serialSendTimer->setInterval(50);
+    _serialSendTimer->setInterval(50);
     
     // populate config dialog
     {
@@ -246,31 +246,31 @@ void MainWindow::slot_ResetClicked()
 
 void MainWindow::slot_ConfigClicked()
 {
-	if (_serialPort->isOpen())
-	{
-		_redirectingTimer->start();
-		_redirectingToConfigEdit = true;
-		_configEdit->clear();
-		_serialPort->write(QString("showconf\n").toLatin1());
-	}
+    if (_serialPort->isOpen())
+    {
+        _redirectingTimer->start();
+        _redirectingToConfigEdit = true;
+        _configEdit->clear();
+        _serialPort->write(QString("showconf\n").toLatin1());
+    }
     _configDialog->exec();
 }
 
 void MainWindow::slot_SaveClicked()
 {
-	if (_serialPort->isOpen())
-	{
-		const QStringList lines = _configEdit->document()->toPlainText().split('\n', QString::KeepEmptyParts);
-		_txQueue.clear();
-		_txQueue.append("deleteconf");
-		for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
-		{
-			_txQueue.append(QString("appendconf ") + *it);
-		}
-		_txQueue.append("flashsaveconf");
-		_serialSendTimer->start();
-		slot_SerialSendFromQueue();
-	}
+    if (_serialPort->isOpen())
+    {
+        const QStringList lines = _configEdit->document()->toPlainText().split('\n', QString::KeepEmptyParts);
+        _txQueue.clear();
+        _txQueue.append("deleteconf");
+        for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
+        {
+            _txQueue.append(QString("appendconf ") + *it);
+        }
+        _txQueue.append("flashsaveconf");
+        _serialSendTimer->start();
+        slot_SerialSendFromQueue();
+    }
 }
 
 void MainWindow::slot_ConfigReceiveTimeout()
@@ -280,12 +280,12 @@ void MainWindow::slot_ConfigReceiveTimeout()
 
 void MainWindow::slot_SerialSendFromQueue()
 {
-	if (!_serialPort->isOpen())
-		_txQueue.clear();
-	if (!_txQueue.isEmpty())
-		_serialPort->write((_txQueue.takeFirst() + '\n').toLatin1());
-	if (_txQueue.isEmpty())
-		_serialSendTimer->stop();
+    if (!_serialPort->isOpen())
+        _txQueue.clear();
+    if (!_txQueue.isEmpty())
+        _serialPort->write((_txQueue.takeFirst() + '\n').toLatin1());
+    if (_txQueue.isEmpty())
+        _serialSendTimer->stop();
 }
 
 void MainWindow::slot_SendClicked()
@@ -296,7 +296,7 @@ void MainWindow::slot_SendClicked()
         return;
     }
     const QString line = _lineEdit->text();
-	_lineEdit->saveLine();
+    _lineEdit->saveLine();
     _lineEdit->clear();
     _serialPort->write((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
 }
@@ -332,16 +332,16 @@ void MainWindow::slot_SerialDataReceived()
 {
     const QByteArray buf = _serialPort->readAll();
     const QString txt = _demux->addData(buf);
-	if (!txt.isEmpty())
-	{
-		if (_redirectingToConfigEdit)
-		{
-			_redirectingTimer->start(); // extend (restart) timer to delay timeout
-			AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
-		}
-		else
-			AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
-	}
+    if (!txt.isEmpty())
+    {
+        if (_redirectingToConfigEdit)
+        {
+            _redirectingTimer->start(); // extend (restart) timer to delay timeout
+            AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
+        }
+        else
+            AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
+    }
 }
 
 /*void MainWindow::slot_SerialPortClosed()

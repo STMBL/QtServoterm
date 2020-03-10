@@ -100,7 +100,7 @@ protected:
     QLabel *_configSizeLabel;
     QTimer *_redirectingTimer;
     QTimer *_serialSendTimer;
-	QStringList _txQueue;
+    QStringList _txQueue;
     int _scopeX;
     bool _redirectingToConfigEdit;
 };

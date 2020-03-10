@@ -28,6 +28,7 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QPushButton>
+#include <QCheckBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMessageBox>
@@ -51,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _disconnectButton(new QPushButton("Disconnect")),
     _clearButton(new QPushButton("Clear")),
     _resetButton(new QPushButton("Reset")),
+    _jogCheckbox(new QCheckBox("Jog")),
     _configButton(new QPushButton("Config")),
     _oscilloscope(new Oscilloscope),
     _textLog(new QTextEdit),
@@ -65,11 +67,14 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSizeLabel(new QLabel),
     _redirectingTimer(new QTimer(this)),
     _serialSendTimer(new QTimer(this)),
-    _redirectingToConfigEdit(false)
+    _redirectingToConfigEdit(false),
+    _leftPressed(false),
+    _rightPressed(false)
 {
     _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
     _textLog->setReadOnly(true);
     setAcceptDrops(true);
+    qApp->installEventFilter(this);
     _configDialog->setWindowTitle("STMBL Configuration");
     _configDialog->setModal(true);
     _configSizeLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
@@ -78,12 +83,12 @@ MainWindow::MainWindow(QWidget *parent) :
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
     _serialSendTimer->setInterval(50);
-    
+
     // populate config dialog
     {
         QVBoxLayout * const vbox = new QVBoxLayout(_configDialog);
         vbox->addWidget(_configEdit);
-        
+
         {
             QHBoxLayout * const hbox = new QHBoxLayout;
             hbox->addWidget(_configSaveButton);
@@ -103,6 +108,7 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addSeparator();
         toolbar->addWidget(_clearButton);
         toolbar->addWidget(_resetButton);
+        toolbar->addWidget(_jogCheckbox);
         toolbar->addWidget(_configButton);
         addToolBar(toolbar);
     }
@@ -125,6 +131,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
     connect(_resetButton, SIGNAL(clicked()), this, SLOT(slot_ResetClicked()));
+    connect(_jogCheckbox, SIGNAL(toggled(bool)), this, SLOT(slot_JogToggled(bool)));
     connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
     connect(_configSaveButton, SIGNAL(clicked()), this, SLOT(slot_SaveClicked()));
     connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
@@ -198,6 +205,11 @@ void MainWindow::slot_ResetClicked()
     }
     _serialPort->write(QString("fault0.en = 0\n").toLatin1());
     _serialPort->write(QString("fault0.en = 1\n").toLatin1());
+}
+
+void MainWindow::slot_JogToggled(bool on)
+{
+    _DoJogging();
 }
 
 void MainWindow::slot_ConfigClicked()
@@ -377,6 +389,60 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     _saveSettings();
     QMainWindow::closeEvent(event);
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if ((event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease))
+    {
+        QKeyEvent * const keyEvent = static_cast<QKeyEvent*>(event);
+        const bool pressed = (event->type() == QEvent::KeyPress);
+        if (keyEvent->key() == Qt::Key_Left)
+            _leftPressed = pressed;
+        else if (keyEvent->key() == Qt::Key_Right)
+            _rightPressed = pressed;
+        _DoJogging();
+        return _jogCheckbox->isChecked();
+    }
+    return QObject::eventFilter(obj, event);
+}
+
+void MainWindow::_DoJogging()
+{
+    if (!_serialPort->isOpen())
+    {
+        // _jogState = JOGGING_IDLE; // TODO set to an invalid value to force sending a sychronizing command after (re)connecting
+        return;
+    }
+
+    // determine new state
+    JogState newState = JOGGING_IDLE;
+    if (_jogCheckbox->isChecked())
+    {
+        if (_leftPressed && !_rightPressed)
+            newState = JOGGING_CCW;
+        else if (_rightPressed && !_leftPressed)
+            newState = JOGGING_CW;
+    }
+
+    // synchronize the STMBL drive to the GUI's jog state
+    if (newState != _jogState)
+    {
+        _jogState = newState;
+        switch (_jogState)
+        {
+            case JOGGING_CCW:
+            _serialPort->write("jogl\n");
+            break;
+
+            case JOGGING_CW:
+            _serialPort->write("jogr\n");
+            break;
+
+            default:
+            _serialPort->write("jogx\n");
+        }
+    }
 }
 
 void MainWindow::_RepopulateDeviceList()

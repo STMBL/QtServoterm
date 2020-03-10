@@ -26,6 +26,7 @@
 QT_BEGIN_NAMESPACE
 class QComboBox;
 class QPushButton;
+class QCheckBox;
 class QTextEdit;
 class QPlainTextEdit;
 class QLabel;
@@ -49,6 +50,7 @@ protected slots:
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
     void slot_ResetClicked();
+    void slot_JogToggled(bool on);
     void slot_ConfigClicked();
     void slot_SaveClicked();
     void slot_ConfigReceiveTimeout();
@@ -66,6 +68,8 @@ protected:
     void dragLeaveEvent(QDragLeaveEvent *event);
     void dropEvent(QDropEvent *event);*/
     void closeEvent(QCloseEvent *event);
+    bool eventFilter(QObject *obj, QEvent *event);
+    void _DoJogging();
     void _RepopulateDeviceList();
     void _saveSettings();
     void _loadSettings();
@@ -75,6 +79,7 @@ protected:
     QPushButton *_disconnectButton;
     QPushButton *_clearButton;
     QPushButton *_resetButton;
+    QCheckBox *_jogCheckbox;
     QPushButton *_configButton;
     Oscilloscope *_oscilloscope;
     QTextEdit *_textLog;
@@ -91,6 +96,14 @@ protected:
     QTimer *_serialSendTimer;
     QStringList _txQueue;
     bool _redirectingToConfigEdit;
+    bool _leftPressed;
+    bool _rightPressed;
+    enum JogState
+    {
+        JOGGING_IDLE,
+        JOGGING_CW,
+        JOGGING_CCW
+    } _jogState;
 };
 
 } // namespace STMBL_Servoterm

@@ -17,36 +17,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef STMBL_SERVOTERM_SCOPEDATADEMUX_H
-#define STMBL_SERVOTERM_SCOPEDATADEMUX_H
-
-#include <QObject>
-#include <QVector>
-
-QT_BEGIN_NAMESPACE
-class QByteArray;
-QT_END_NAMESPACE
+#ifndef STMBL_SERVOTERM_GLOBALS_H
+#define STMBL_SERVOTERM_GLOBALS_H
 
 namespace STMBL_Servoterm {
 
-class ScopeDataDemux : public QObject
-{
-    Q_OBJECT
-public:
-    ScopeDataDemux(QObject *parent = nullptr);
-    QString addData(const QByteArray &data);
-signals:
-    void scopePacketReceived(const QVector<float> &packet);
-    void scopeResetReceived();
-protected:
-    enum State
-    {
-        SCOPEDATADEMUX_STATE_IDLE = 0,
-        SCOPEDATADEMUX_STATE_READING_PACKET
-    } _state;
-    QVector<float> _packet;
-};
+static const int SCOPE_CHANNEL_COUNT = 8;
 
 } // namespace STMBL_Servoterm
 
-#endif // STMBL_SERVOTERM_SCOPEDATADEMUX_H
+#endif // STMBL_SERVOTERM_GLOBALS_H

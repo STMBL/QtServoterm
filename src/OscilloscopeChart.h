@@ -17,36 +17,36 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef STMBL_SERVOTERM_SCOPEDATADEMUX_H
-#define STMBL_SERVOTERM_SCOPEDATADEMUX_H
+#ifndef STMBL_SERVOTERM_OSCILLOSCOPECHART_H
+#define STMBL_SERVOTERM_OSCILLOSCOPECHART_H
 
-#include <QObject>
-#include <QVector>
+#include "globals.h"
 
-QT_BEGIN_NAMESPACE
-class QByteArray;
-QT_END_NAMESPACE
+#include <QChartView>
+
+QT_CHARTS_BEGIN_NAMESPACE
+class QChartView;
+class QChart;
+class QLineSeries;
+QT_CHARTS_END_NAMESPACE
 
 namespace STMBL_Servoterm {
 
-class ScopeDataDemux : public QObject
+class OscilloscopeChart : public QT_CHARTS_NAMESPACE::QChartView
 {
     Q_OBJECT
 public:
-    ScopeDataDemux(QObject *parent = nullptr);
-    QString addData(const QByteArray &data);
-signals:
-    void scopePacketReceived(const QVector<float> &packet);
-    void scopeResetReceived();
+    OscilloscopeChart(QWidget *parent = nullptr);
+public slots:
+    void addChannelsSample(const QVector<float> &channelsSample);
+    void resetScanning();
 protected:
-    enum State
-    {
-        SCOPEDATADEMUX_STATE_IDLE = 0,
-        SCOPEDATADEMUX_STATE_READING_PACKET
-    } _state;
-    QVector<float> _packet;
+    QT_CHARTS_NAMESPACE::QChart *_chart;
+    QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];
+    QT_CHARTS_NAMESPACE::QLineSeries *_chartRollingLine;
+    int _scopeX;
 };
 
 } // namespace STMBL_Servoterm
 
-#endif // STMBL_SERVOTERM_SCOPEDATADEMUX_H
+#endif // STMBL_SERVOTERM_OSCILLOSCOPECHART_H

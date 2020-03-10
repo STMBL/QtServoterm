@@ -23,9 +23,6 @@
 #include <QSettings>
 #include <QSerialPort>
 #include <QSerialPortInfo>
-#include <QChartView>
-#include <QValueAxis>
-#include <QLineSeries>
 #include <QTextEdit>
 #include <QPlainTextEdit>
 #include <QLineEdit>
@@ -34,18 +31,16 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMessageBox>
-#include <QDebug>
+// #include <QDebug>
 #include <QDialog>
 
 #include "MainWindow.h"
+#include "OscilloscopeChart.h"
 #include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
 
-QT_CHARTS_USE_NAMESPACE
-
 namespace STMBL_Servoterm {
 
-static const int SAMPLE_WINDOW_LENGTH = 200;
 static const quint16 STMBL_USB_VENDOR_ID  = 0x0483; //  1155
 static const quint16 STMBL_USB_PRODUCT_ID = 0x5740; // 22336
 
@@ -57,10 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _clearButton(new QPushButton("Clear")),
     _resetButton(new QPushButton("Reset")),
     _configButton(new QPushButton("Config")),
-    _chartView(new QChartView),
-    _chart(new QChart),
-    // _chartData(),
-    _chartRollingLine(new QLineSeries),
+    _oscilloscope(new OscilloscopeChart),
     _textLog(new QTextEdit),
     _lineEdit(new HistoryLineEdit),
     _sendButton(new QPushButton("Send")),
@@ -73,7 +65,6 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSizeLabel(new QLabel),
     _redirectingTimer(new QTimer(this)),
     _serialSendTimer(new QTimer(this)),
-    _scopeX(0),
     _redirectingToConfigEdit(false)
 {
     _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
@@ -101,41 +92,6 @@ MainWindow::MainWindow(QWidget *parent) :
         }
     }
 
-    // set up chart
-    _chart->setMinimumSize(600, 256);
-    {
-        QValueAxis * const axisX = new QValueAxis;
-        axisX->setRange(0, SAMPLE_WINDOW_LENGTH);
-        axisX->setLabelFormat("%g");
-        // axisX->setTitleText("Sample");
-        axisX->setVisible(false);
-
-        QValueAxis * const axisY = new QValueAxis;
-        axisY->setRange(-1, 1);
-        // axisY->setTitleText("Value");
-        axisY->setVisible(false);
-
-        _chart->addAxis(axisX, Qt::AlignBottom);
-        _chart->addAxis(axisY, Qt::AlignLeft);
-        for (int i = 0; i < SCOPE_CHANNEL_COUNT; i++)
-        {
-            QLineSeries * const series = new QLineSeries;
-            _chartData[i] = series;
-            _chart->addSeries(series);
-            series->attachAxis(axisX);
-            series->attachAxis(axisY);
-        }
-
-        // set up the visual indicator of where the new data is
-        // overwriting the old in the rolling oscilloscope view
-        _chart->addSeries(_chartRollingLine);
-        _chartRollingLine->attachAxis(axisX);
-        _chartRollingLine->attachAxis(axisY);
-    }
-    _chart->legend()->hide();
-    _chart->setTitle("Oscilloscope");
-    _chartView->setChart(_chart);
-
     setWindowTitle(QCoreApplication::applicationName());
     {
         QToolBar * const toolbar = new QToolBar;
@@ -153,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent) :
     {
         QWidget * const dummy = new QWidget;
         QVBoxLayout * const vbox = new QVBoxLayout(dummy);
-        vbox->addWidget(_chartView);
+        vbox->addWidget(_oscilloscope);
         vbox->addWidget(_textLog);
         {
             QHBoxLayout * const hbox = new QHBoxLayout;
@@ -350,51 +306,12 @@ void MainWindow::slot_SerialDataReceived()
 
 void MainWindow::slot_ScopePacketReceived(const QVector<float> &packet)
 {
-    //Zerocross detection
-    /*if(((trigger_last < 0.01 && values[trigger_wave] > 0) || (trigger_last < 0 && values[trigger_wave] > 0.01)) && !trigger_zerocross){
-        trigger_zerocross = true;
-    }
-        trigger_last = values[trigger_wave];
-
-        //Only plot if triggrd
-    if((trigger_enabled && trigger_wait && (values[trigger_wave] >= trigger_lvl) && trigger_zerocross) || (trigger_enabled && !trigger_wait)){
-        trigger_buttonstate = 2;
-        trigger_wait = false;
-
-        plot(values);
-    }else if (!trigger_enabled) {  //rolling plot if trigger is disabled*/
-        // plot(values);
-
-    /*}*/
-
-    ///////////
-
-    // plot the samples
-    for (int channel = 0; channel < packet.size() && channel < SCOPE_CHANNEL_COUNT; channel++)
-    {
-        QLineSeries * const series = _chartData[channel];
-        const float yValue = packet[channel];
-        if (_scopeX >= series->count())
-            series->append(_scopeX, yValue);
-        else
-            series->replace(_scopeX, _scopeX, yValue);
-    }
-    // advance the sample index and roll around if necessary
-    _scopeX++;
-    if (_scopeX >= SAMPLE_WINDOW_LENGTH)
-        _scopeX = 0;
-    // update the incoming data vertical line indicator
-    {
-        QVector<QPointF> verticalLine;
-        verticalLine.append(QPointF(_scopeX, -1.0));
-        verticalLine.append(QPointF(_scopeX,  1.0));
-        _chartRollingLine->replace(verticalLine);
-    }
+    _oscilloscope->addChannelsSample(packet);
 }
 
 void MainWindow::slot_ScopeResetReceived()
 {
-    _scopeX = 0;
+    _oscilloscope->resetScanning();
 }
 
 void MainWindow::slot_ConfigTextChanged()

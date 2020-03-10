@@ -21,7 +21,6 @@
 #define STMBL_SERVOTERM_MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QChartGlobal>
 #include <QStringList>
 
 QT_BEGIN_NAMESPACE
@@ -34,14 +33,9 @@ class QSerialPort;
 class QSettings;
 QT_END_NAMESPACE
 
-QT_CHARTS_BEGIN_NAMESPACE
-class QChartView;
-class QChart;
-class QLineSeries;
-QT_CHARTS_END_NAMESPACE
-
 namespace STMBL_Servoterm {
 
+class OscilloscopeChart;
 class HistoryLineEdit;
 class ScopeDataDemux;
 
@@ -76,18 +70,13 @@ protected:
     void _saveSettings();
     void _loadSettings();
 
-    static const int SCOPE_CHANNEL_COUNT = 8;
-
     QComboBox *_portList;
     QPushButton *_connectButton;
     QPushButton *_disconnectButton;
     QPushButton *_clearButton;
     QPushButton *_resetButton;
     QPushButton *_configButton;
-    QT_CHARTS_NAMESPACE::QChartView *_chartView;
-    QT_CHARTS_NAMESPACE::QChart *_chart;
-    QT_CHARTS_NAMESPACE::QLineSeries *_chartData[SCOPE_CHANNEL_COUNT];
-    QT_CHARTS_NAMESPACE::QLineSeries *_chartRollingLine;
+    OscilloscopeChart *_oscilloscope;
     QTextEdit *_textLog;
     HistoryLineEdit *_lineEdit;
     QPushButton *_sendButton;
@@ -101,7 +90,6 @@ protected:
     QTimer *_redirectingTimer;
     QTimer *_serialSendTimer;
     QStringList _txQueue;
-    int _scopeX;
     bool _redirectingToConfigEdit;
 };
 

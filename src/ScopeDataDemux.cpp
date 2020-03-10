@@ -18,6 +18,7 @@
 */
 
 #include "ScopeDataDemux.h"
+#include "globals.h"
 
 #include <QByteArray>
 

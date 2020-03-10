@@ -35,7 +35,7 @@
 #include <QDialog>
 
 #include "MainWindow.h"
-#include "OscilloscopeChart.h"
+#include "Oscilloscope.h"
 #include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
 
@@ -52,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _clearButton(new QPushButton("Clear")),
     _resetButton(new QPushButton("Reset")),
     _configButton(new QPushButton("Config")),
-    _oscilloscope(new OscilloscopeChart),
+    _oscilloscope(new Oscilloscope),
     _textLog(new QTextEdit),
     _lineEdit(new HistoryLineEdit),
     _sendButton(new QPushButton("Send")),

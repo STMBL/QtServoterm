@@ -35,7 +35,7 @@ QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
 
-class OscilloscopeChart;
+class Oscilloscope;
 class HistoryLineEdit;
 class ScopeDataDemux;
 
@@ -76,7 +76,7 @@ protected:
     QPushButton *_clearButton;
     QPushButton *_resetButton;
     QPushButton *_configButton;
-    OscilloscopeChart *_oscilloscope;
+    Oscilloscope *_oscilloscope;
     QTextEdit *_textLog;
     HistoryLineEdit *_lineEdit;
     QPushButton *_sendButton;

@@ -1,13 +1,13 @@
-QT += widgets charts serialport
+QT += widgets serialport
 
 HEADERS = \
-src/OscilloscopeChart.h \
+src/Oscilloscope.h \
 src/HistoryLineEdit.h \
 src/ScopeDataDemux.h \
 src/MainWindow.h
 
 SOURCES = \
-src/OscilloscopeChart.cpp \
+src/Oscilloscope.cpp \
 src/HistoryLineEdit.cpp \
 src/ScopeDataDemux.cpp \
 src/MainWindow.cpp \

@@ -115,7 +115,7 @@ void Oscilloscope::paintEvent(QPaintEvent *event)
         DrawSampleRange(_channelsSamples, 0, _scopeX, h, painter);
         DrawSampleRange(_channelsSamples, _scopeX, _channelsSamples.size(), h, painter);
     }
-    painter.setPen(Qt::red);
+    painter.setPen(Qt::blue);
     // painter.drawLine(_scopeX, 0, _scopeX, h-1);
     painter.drawRect(_scopeX, 0, 20, h);
 }

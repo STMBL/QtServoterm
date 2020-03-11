@@ -22,20 +22,20 @@
 
 #include <QMainWindow>
 #include <QStringList>
+#include <QSerialPort>
 
 QT_BEGIN_NAMESPACE
-class QComboBox;
 class QPushButton;
 class QCheckBox;
 class QTextEdit;
 class QPlainTextEdit;
 class QLabel;
-class QSerialPort;
 class QSettings;
 QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
 
+class ClickableComboBox;
 class Oscilloscope;
 class HistoryLineEdit;
 class ScopeDataDemux;
@@ -47,6 +47,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 protected slots:
+    void slot_PortListClicked();
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
     void slot_ResetClicked();
@@ -56,6 +57,7 @@ protected slots:
     void slot_ConfigReceiveTimeout();
     void slot_SerialSendFromQueue();
     void slot_SendClicked();
+    void slot_SerialErrorOccurred(QSerialPort::SerialPortError error);
     void slot_SerialDataReceived();
     // void slot_SerialPortClosed();
     void slot_ScopePacketReceived(const QVector<float> &packet);
@@ -74,7 +76,7 @@ protected:
     void _saveSettings();
     void _loadSettings();
 
-    QComboBox *_portList;
+    ClickableComboBox *_portList;
     QPushButton *_connectButton;
     QPushButton *_disconnectButton;
     QPushButton *_clearButton;

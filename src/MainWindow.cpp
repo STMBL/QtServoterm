@@ -19,9 +19,7 @@
 
 #include <QtWidgets>
 #include <QToolBar>
-#include <QComboBox>
 #include <QSettings>
-#include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QTextEdit>
 #include <QPlainTextEdit>
@@ -36,6 +34,7 @@
 #include <QDialog>
 
 #include "MainWindow.h"
+#include "ClickableComboBox.h"
 #include "Oscilloscope.h"
 #include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
@@ -51,7 +50,7 @@ static void AppendTextToEdit(T &target, M insertMethod, const QString &txt);
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    _portList(new QComboBox),
+    _portList(new ClickableComboBox),
     _connectButton(new QPushButton("Connect")),
     _disconnectButton(new QPushButton("Disconnect")),
     _clearButton(new QPushButton("Clear")),
@@ -130,6 +129,7 @@ MainWindow::MainWindow(QWidget *parent) :
         setCentralWidget(dummy);
     }
 
+    connect(_portList, SIGNAL(clicked()), this, SLOT(slot_PortListClicked()));
     connect(_portList, SIGNAL(currentIndexChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
     connect(_connectButton, SIGNAL(clicked()), this, SLOT(slot_ConnectClicked()));
     connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
@@ -142,6 +142,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_lineEdit, SIGNAL(returnPressed()), _sendButton, SLOT(click()));
     connect(_sendButton, SIGNAL(clicked()), this, SLOT(slot_SendClicked()));
     connect(_serialPort, SIGNAL(readyRead()), this, SLOT(slot_SerialDataReceived()));
+    connect(_serialPort, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this, SLOT(slot_SerialErrorOccurred(QSerialPort::SerialPortError)));
     // connect(_serialPort, SIGNAL(readChannelFinished()), this, SLOT(slot_SerialPortClosed())); // NOTE: doesn't seem to actually work
     connect(_demux, SIGNAL(scopePacketReceived(const QVector<float> &)), this, SLOT(slot_ScopePacketReceived(const QVector<float> &)));
     connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
@@ -158,6 +159,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+}
+
+void MainWindow::slot_PortListClicked()
+{
+    _RepopulateDeviceList();
+    slot_UpdateButtons();
 }
 
 void MainWindow::slot_ConnectClicked()
@@ -303,6 +310,63 @@ static void AppendTextToEdit(T &target, M insertMethod, const QString &txt)
     }
 }
 
+void MainWindow::slot_SerialErrorOccurred(QSerialPort::SerialPortError error)
+{
+    QString errorMsg;
+    bool forceClose = false;
+    switch (error)
+    {
+        case QSerialPort::NoError:
+        return; // all good!
+
+        // case QSerialPort::DeviceNotFoundError:
+        // case QSerialPort::PermissionError:
+        // case QSerialPort::OpenError:
+        // case QSerialPort::NotOpenError:
+
+        case QSerialPort::WriteError:
+        errorMsg = "serial port write error";
+        forceClose = true;
+        break;
+
+        case QSerialPort::ReadError:
+        errorMsg = "serial port read error";
+        forceClose = true;
+        break;
+
+        case QSerialPort::ResourceError:
+        errorMsg = "serial port resource error";
+        forceClose = true;
+        break;
+
+        // case QSerialPort::UnsupportedOperationError:
+        // case QSerialPort::TimeoutError:
+        // case QSerialPort::UnknownError:
+        default:
+        break;
+    }
+    if (errorMsg.isEmpty())
+    {
+        QMetaEnum metaEnum = QMetaEnum::fromType<QSerialPort::SerialPortError>();
+        AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, QString("<font color=\"FireBrick\">serial port \"QSerialPort::") + metaEnum.valueToKey(error) + "\"</font>");
+        AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+    }
+    if (forceClose)
+    {
+        const bool before = _serialPort->isOpen();
+        _serialPort->close();
+        const bool after = _serialPort->isOpen();
+        if (before != after)
+        {
+            AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
+            AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+        }
+        _RepopulateDeviceList();
+        slot_UpdateButtons();
+    }
+    // emit serialIsConnected(false);
+}
+
 void MainWindow::slot_SerialDataReceived()
 {
     const QByteArray buf = _serialPort->readAll();
@@ -346,6 +410,7 @@ void MainWindow::slot_UpdateButtons()
     const bool portSelected = !_portList->currentText().isEmpty();
     const bool portOpen = _serialPort->isOpen();
     const bool hasCommand = !_lineEdit->text().isEmpty();
+    _portList->setEnabled(!portOpen || !portSelected);
     _connectButton->setEnabled(!portOpen && portSelected);
     _disconnectButton->setEnabled(portOpen);
     _clearButton->setEnabled(!_textLog->document()->isEmpty());

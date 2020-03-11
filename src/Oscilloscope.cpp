@@ -112,12 +112,14 @@ void Oscilloscope::paintEvent(QPaintEvent *event)
     // a very slight optimization
     if (!_channelsSamples.isEmpty())
     {
-        DrawSampleRange(_channelsSamples, 0, _scopeX, h, painter);
-        DrawSampleRange(_channelsSamples, _scopeX, _channelsSamples.size(), h, painter);
+        const int  firstX = qMax(0, event->rect().x()-1);
+        const int   lastX = qMin(event->rect().x()+event->rect().width(), _channelsSamples.size());
+        const int middleX = qBound(firstX, _scopeX, lastX);
+        DrawSampleRange(_channelsSamples,  firstX, middleX, h, painter);
+        DrawSampleRange(_channelsSamples, middleX,   lastX, h, painter);
     }
     painter.setPen(Qt::blue);
-    // painter.drawLine(_scopeX, 0, _scopeX, h-1);
-    painter.drawRect(_scopeX, 0, 20, h);
+    painter.drawLine(_scopeX, 0, _scopeX, h-1);
 }
 
 void Oscilloscope::resizeEvent(QResizeEvent *event)

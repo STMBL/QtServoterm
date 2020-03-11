@@ -242,6 +242,7 @@ void MainWindow::slot_SaveClicked()
 {
     if (_serialPort->isOpen())
     {
+        _configDialog->hide();
         const QStringList lines = _configEdit->document()->toPlainText().split('\n', QString::KeepEmptyParts);
         _txQueue.clear();
         _txQueue.append("deleteconf");

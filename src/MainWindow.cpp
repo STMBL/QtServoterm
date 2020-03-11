@@ -476,6 +476,9 @@ void MainWindow::_saveSettings()
     _settings->setValue("geometry", saveGeometry());
     _settings->setValue("windowState", saveState());
     _settings->endGroup();
+    _settings->beginGroup("ConfigDialog");
+    _settings->setValue("geometry", _configDialog->saveGeometry());
+    _settings->endGroup();
 }
 
 void MainWindow::_loadSettings()
@@ -483,6 +486,9 @@ void MainWindow::_loadSettings()
     _settings->beginGroup("MainWindow");
     restoreGeometry(_settings->value("geometry").toByteArray());
     restoreState(_settings->value("windowState").toByteArray());
+    _settings->endGroup();
+    _settings->beginGroup("ConfigDialog");
+    _configDialog->restoreGeometry(_settings->value("geometry").toByteArray());
     _settings->endGroup();
 }
 

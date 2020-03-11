@@ -408,6 +408,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
             _leftPressed = pressed;
         else if (keyEvent->key() == Qt::Key_Right)
             _rightPressed = pressed;
+        else
+            return QObject::eventFilter(obj, event);
         _DoJogging();
         return _jogCheckbox->isChecked();
     }

@@ -132,6 +132,7 @@ void Oscilloscope::resizeEvent(QResizeEvent *event)
     // make sure we're still inside the window
     if (_scopeX >= _channelsSamples.size())
         _SetScopeX(0);
+    QWidget::resizeEvent(event);
 }
 
 void Oscilloscope::_SetScopeX(int newX)

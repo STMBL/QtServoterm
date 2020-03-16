@@ -36,6 +36,7 @@
 #include "MainWindow.h"
 #include "ClickableComboBox.h"
 #include "Oscilloscope.h"
+#include "XYOscilloscope.h"
 #include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
 
@@ -56,8 +57,10 @@ MainWindow::MainWindow(QWidget *parent) :
     _clearButton(new QPushButton("Clear")),
     _resetButton(new QPushButton("Reset")),
     _jogCheckbox(new QCheckBox("Jog")),
+    _xyCheckbox(new QCheckBox("XY Mode")),
     _configButton(new QPushButton("Config")),
     _oscilloscope(new Oscilloscope),
+    _xyOscilloscope(new XYOscilloscope),
     _textLog(new QTextEdit),
     _lineEdit(new HistoryLineEdit),
     _sendButton(new QPushButton("Send")),
@@ -86,6 +89,8 @@ MainWindow::MainWindow(QWidget *parent) :
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
     _serialSendTimer->setInterval(50);
+    _xyCheckbox->setChecked(true);
+    _xyOscilloscope->setVisible(_xyCheckbox->isChecked()); // TODO move this beyond where we load QSettings
 
     // populate config dialog
     {
@@ -112,13 +117,19 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addWidget(_clearButton);
         toolbar->addWidget(_resetButton);
         toolbar->addWidget(_jogCheckbox);
+        toolbar->addWidget(_xyCheckbox);
         toolbar->addWidget(_configButton);
         addToolBar(toolbar);
     }
     {
         QWidget * const dummy = new QWidget;
         QVBoxLayout * const vbox = new QVBoxLayout(dummy);
-        vbox->addWidget(_oscilloscope);
+        {
+            QHBoxLayout * const hbox = new QHBoxLayout;
+            hbox->addWidget(_oscilloscope, 1);
+            hbox->addWidget(_xyOscilloscope);
+            vbox->addLayout(hbox);
+        }
         vbox->addWidget(_textLog);
         {
             QHBoxLayout * const hbox = new QHBoxLayout;
@@ -136,6 +147,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
     connect(_resetButton, SIGNAL(clicked()), this, SLOT(slot_ResetClicked()));
     connect(_jogCheckbox, SIGNAL(toggled(bool)), this, SLOT(slot_JogToggled(bool)));
+    connect(_xyCheckbox, SIGNAL(toggled(bool)), _xyOscilloscope, SLOT(setVisible(bool)));
     connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
     connect(_configSaveButton, SIGNAL(clicked()), this, SLOT(slot_SaveClicked()));
     connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
@@ -391,11 +403,13 @@ void MainWindow::slot_SerialDataReceived()
 void MainWindow::slot_ScopePacketReceived(const QVector<float> &packet)
 {
     _oscilloscope->addChannelsSample(packet);
+    _xyOscilloscope->addChannelsSample(packet);
 }
 
 void MainWindow::slot_ScopeResetReceived()
 {
     _oscilloscope->resetScanning();
+    _xyOscilloscope->resetScanning();
 }
 
 void MainWindow::slot_ConfigTextChanged()

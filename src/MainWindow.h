@@ -37,6 +37,7 @@ namespace STMBL_Servoterm {
 
 class ClickableComboBox;
 class Oscilloscope;
+class XYOscilloscope;
 class HistoryLineEdit;
 class ScopeDataDemux;
 
@@ -82,8 +83,10 @@ protected:
     QPushButton *_clearButton;
     QPushButton *_resetButton;
     QCheckBox *_jogCheckbox;
+    QCheckBox *_xyCheckbox;
     QPushButton *_configButton;
     Oscilloscope *_oscilloscope;
+    XYOscilloscope *_xyOscilloscope;
     QTextEdit *_textLog;
     HistoryLineEdit *_lineEdit;
     QPushButton *_sendButton;

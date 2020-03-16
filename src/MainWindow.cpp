@@ -89,8 +89,8 @@ MainWindow::MainWindow(QWidget *parent) :
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
     _serialSendTimer->setInterval(50);
-    _xyCheckbox->setChecked(true);
-    _xyOscilloscope->setVisible(_xyCheckbox->isChecked()); // TODO move this beyond where we load QSettings
+    _xyCheckbox->setChecked(false); // TODO make this a saved setting
+    _xyOscilloscope->setVisible(_xyCheckbox->isChecked());
 
     // populate config dialog
     {

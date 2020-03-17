@@ -24,10 +24,16 @@
 
 #include <QWidget>
 #include <QImage>
+#include <QSet>
 
 QT_BEGIN_NAMESPACE
 class QTimer;
 QT_END_NAMESPACE
+
+inline uint qHash(const QPoint &pt)
+{
+    return (pt.y() << 16) + pt.x();
+}
 
 namespace STMBL_Servoterm {
 
@@ -44,8 +50,10 @@ protected slots:
 protected:
     void paintEvent(QPaintEvent *event);
     void resizeEvent(QResizeEvent *event);
+    QRect _ImageRectToWidgetRect(const QRect &r) const;
     QImage _plot;
     QTimer *_timer;
+    QSet<QPoint> _points;
 };
 
 } // namespace STMBL_Servoterm

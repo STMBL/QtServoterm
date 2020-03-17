@@ -44,15 +44,11 @@ void XYOscilloscope::addChannelsSample(const QVector<float> &channelsSample)
     // update the off-screen buffer
     QPoint pt(128+channelsSample.at(0)*128, 128-channelsSample.at(1)*128);
     _plot.setPixel(pt, QColor(Qt::blue).rgba());
+    _points.insert(pt);
 
     // calculate what it would affect in screen coordinates
-    const qreal xScalar = static_cast<qreal>( width())/MINIMUM_PLOT_SIZE;
-    const qreal yScalar = static_cast<qreal>(height())/MINIMUM_PLOT_SIZE;
-    const QTransform trans = QTransform::fromScale(xScalar, yScalar);
-    const QRect imagePixelRect(pt, QSize(1, 1));
-    const QRect widgetPixelRect = trans.mapRect(imagePixelRect);
-    update(widgetPixelRect);
-    
+    update(_ImageRectToWidgetRect(QRect(pt, QSize(1, 1))));
+
     // make sure fading is re-enabled
     if (!_timer->isActive())
         _timer->start();
@@ -71,24 +67,30 @@ void XYOscilloscope::resetScanning()
 
 void XYOscilloscope::slot_FadeTimeout()
 {
-    uchar * pix = _plot.bits();
-    uchar * const end = pix + _plot.SIZE_IN_BYTES_METHOD();
-    uchar allMax = 0xFF;
-    while (pix < end)
+    QRect region; // could be done with QRegion too
+    const QRgb whiteVal = QColor(Qt::white).rgba();
+    for (QSet<QPoint>::iterator it = _points.begin(); it != _points.end(); /* */)
     {
-        // perhaps counter-intutive, but we are raising all
-        // color channels to their maximum values to produce
-        // opaque white. This effectively fades blue to white
-        if (*pix != 0xFF)
-            *pix += 1;
-        allMax &= *pix;
-        pix++;
+        QRgb val = _plot.pixel(*it);
+        val += 0x00010100; // increase the red and green channels (causes the solid blue pixel to fade to white)
+        _plot.setPixel(*it, val);
+        region = region.united(QRect(*it, QSize(1, 1)));
+        if (val == whiteVal)
+        {
+            it = _points.erase(it);
+        }
+        else // not fully faded yet
+        {
+            ++it;
+        }
     }
+
     // if we are done, then disable the timer for performance
-    if (allMax == 0xFF)
+    if (_points.isEmpty())
         _timer->stop();
+
     // redraw
-    update();
+    update(_ImageRectToWidgetRect(region));
 }
 
 void XYOscilloscope::paintEvent(QPaintEvent *event)
@@ -107,6 +109,15 @@ void XYOscilloscope::paintEvent(QPaintEvent *event)
 void XYOscilloscope::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
+}
+
+QRect XYOscilloscope::_ImageRectToWidgetRect(const QRect &r) const
+{
+    const qreal xScalar = static_cast<qreal>( width())/MINIMUM_PLOT_SIZE;
+    const qreal yScalar = static_cast<qreal>(height())/MINIMUM_PLOT_SIZE;
+    const QTransform trans = QTransform::fromScale(xScalar, yScalar);
+    const QRect widgetPixelRect = trans.mapRect(r);
+    return widgetPixelRect;
 }
 
 } // namespace STMBL_Servoterm

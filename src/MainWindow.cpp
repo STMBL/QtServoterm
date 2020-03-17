@@ -383,7 +383,7 @@ void MainWindow::slot_SerialErrorOccurred(QSerialPort::SerialPortError error)
 void MainWindow::slot_SerialDataReceived()
 {
     const QByteArray buf = _serialPort->readAll();
-    const QString txt = _demux->addData(buf);
+    const QString txt = _demux->addData(buf).replace("<=", "&lt;="); // HACK, we really need to stop interpreting the data as HTML...
     if (!txt.isEmpty())
     {
         if (_redirectingToConfigEdit)

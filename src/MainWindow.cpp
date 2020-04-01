@@ -79,6 +79,18 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
     _textLog->setReadOnly(true);
+    {
+        QTextDocument * const doc = _textLog->document();
+        QFont f = doc->defaultFont();
+        f.setFamily("monospace");
+        f.setStyleHint(QFont::Monospace);
+        doc->setDefaultFont(f);
+        
+        f = _lineEdit->font();
+        f.setFamily("monospace");
+        f.setStyleHint(QFont::Monospace);
+        _lineEdit->setFont(f);
+    }
     setAcceptDrops(true);
     qApp->installEventFilter(this);
     _configDialog->setWindowTitle("STMBL Configuration");

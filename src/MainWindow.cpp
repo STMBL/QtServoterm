@@ -29,6 +29,7 @@
 #include <QCheckBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QShortcut>
 #include <QMessageBox>
 // #include <QDebug>
 #include <QDialog>
@@ -55,7 +56,8 @@ MainWindow::MainWindow(QWidget *parent) :
     _connectButton(new QPushButton("Connect")),
     _disconnectButton(new QPushButton("Disconnect")),
     _clearButton(new QPushButton("Clear")),
-    _resetButton(new QPushButton("Reset")),
+    _disableButton(new QPushButton("Disable")),
+    _enableButton(new QPushButton("Enable")),
     _jogCheckbox(new QCheckBox("Jog")),
     _xyCheckbox(new QCheckBox("XY Mode")),
     _configButton(new QPushButton("Config")),
@@ -71,6 +73,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _configEdit(new QPlainTextEdit),
     _configSaveButton(new QPushButton("Save")),
     _configSizeLabel(new QLabel),
+    _estopShortcut(new QShortcut(QKeySequence("Esc"), this)),
     _redirectingTimer(new QTimer(this)),
     _serialSendTimer(new QTimer(this)),
     _redirectingToConfigEdit(false),
@@ -127,7 +130,9 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addWidget(_disconnectButton);
         toolbar->addSeparator();
         toolbar->addWidget(_clearButton);
-        toolbar->addWidget(_resetButton);
+        toolbar->addSeparator();
+        toolbar->addWidget(_disableButton);
+        toolbar->addWidget(_enableButton);
         toolbar->addWidget(_jogCheckbox);
         toolbar->addWidget(_xyCheckbox);
         toolbar->addWidget(_configButton);
@@ -157,7 +162,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_connectButton, SIGNAL(clicked()), this, SLOT(slot_ConnectClicked()));
     connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
-    connect(_resetButton, SIGNAL(clicked()), this, SLOT(slot_ResetClicked()));
+    connect(_disableButton, SIGNAL(clicked()), this, SLOT(slot_DisableClicked()));
+    connect(_enableButton, SIGNAL(clicked()), this, SLOT(slot_EnableClicked()));
     connect(_jogCheckbox, SIGNAL(toggled(bool)), this, SLOT(slot_JogToggled(bool)));
     connect(_xyCheckbox, SIGNAL(toggled(bool)), _xyOscilloscope, SLOT(setVisible(bool)));
     connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
@@ -172,6 +178,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
     connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_UpdateButtons()));
     connect(_configEdit, SIGNAL(textChanged()), this, SLOT(slot_ConfigTextChanged()));
+    connect(_estopShortcut, SIGNAL(activated()), this, SLOT(slot_EmergencyStop()));
     connect(_redirectingTimer, SIGNAL(timeout()), this, SLOT(slot_ConfigReceiveTimeout()));
     connect(_serialSendTimer, SIGNAL(timeout()), this, SLOT(slot_SerialSendFromQueue()));
     slot_ConfigTextChanged(); // show the initial byte count
@@ -233,7 +240,23 @@ void MainWindow::slot_DisconnectClicked()
     slot_UpdateButtons();
 }
 
-void MainWindow::slot_ResetClicked()
+void MainWindow::slot_EmergencyStop()
+{
+    _jogCheckbox->setChecked(false);
+    slot_DisableClicked();
+}
+
+void MainWindow::slot_DisableClicked()
+{
+    if (!_serialPort->isOpen())
+    {
+        QMessageBox::warning(this, "Error sending reset commands", "Serial port not open!");
+        return;
+    }
+    _serialPort->write(QString("fault0.en = 0\n").toLatin1());
+}
+
+void MainWindow::slot_EnableClicked()
 {
     if (!_serialPort->isOpen())
     {
@@ -441,7 +464,7 @@ void MainWindow::slot_UpdateButtons()
     _connectButton->setEnabled(!portOpen && portSelected);
     _disconnectButton->setEnabled(portOpen);
     _clearButton->setEnabled(!_textLog->document()->isEmpty());
-    _resetButton->setEnabled(portOpen);
+    _enableButton->setEnabled(portOpen);
     _configButton->setEnabled(portOpen);
     _sendButton->setEnabled(portOpen && hasCommand);
     _configSaveButton->setEnabled(portOpen);

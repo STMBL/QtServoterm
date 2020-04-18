@@ -30,6 +30,7 @@ class QCheckBox;
 class QTextEdit;
 class QPlainTextEdit;
 class QLabel;
+class QShortcut;
 class QSettings;
 QT_END_NAMESPACE
 
@@ -51,7 +52,9 @@ protected slots:
     void slot_PortListClicked();
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
-    void slot_ResetClicked();
+    void slot_EmergencyStop();
+    void slot_DisableClicked();
+    void slot_EnableClicked();
     void slot_JogToggled(bool on);
     void slot_ConfigClicked();
     void slot_SaveClicked();
@@ -81,7 +84,8 @@ protected:
     QPushButton *_connectButton;
     QPushButton *_disconnectButton;
     QPushButton *_clearButton;
-    QPushButton *_resetButton;
+    QPushButton *_disableButton;
+    QPushButton *_enableButton;
     QCheckBox *_jogCheckbox;
     QCheckBox *_xyCheckbox;
     QPushButton *_configButton;
@@ -97,6 +101,7 @@ protected:
     QPlainTextEdit *_configEdit;
     QPushButton *_configSaveButton;
     QLabel *_configSizeLabel;
+    QShortcut *_estopShortcut;
     QTimer *_redirectingTimer;
     QTimer *_serialSendTimer;
     QStringList _txQueue;

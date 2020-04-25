@@ -35,6 +35,8 @@
 #include <QDialog>
 
 #include "MainWindow.h"
+#include "Actions.h"
+#include "MenuBar.h"
 #include "ClickableComboBox.h"
 #include "Oscilloscope.h"
 #include "XYOscilloscope.h"
@@ -52,14 +54,13 @@ static void AppendTextToEdit(T &target, M insertMethod, const QString &txt);
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
+    _actions(new Actions(this)),
+    _menuBar(new MenuBar(_actions, this)),
     _portList(new ClickableComboBox),
-    _connectButton(new QPushButton("Connect")),
-    _disconnectButton(new QPushButton("Disconnect")),
     _clearButton(new QPushButton("Clear")),
     _disableButton(new QPushButton("Disable")),
     _enableButton(new QPushButton("Enable")),
     _jogCheckbox(new QCheckBox("Jog")),
-    _xyCheckbox(new QCheckBox("XY Mode")),
     _configButton(new QPushButton("Config")),
     _oscilloscope(new Oscilloscope),
     _xyOscilloscope(new XYOscilloscope),
@@ -88,7 +89,7 @@ MainWindow::MainWindow(QWidget *parent) :
         f.setFamily("monospace");
         f.setStyleHint(QFont::Monospace);
         doc->setDefaultFont(f);
-        
+
         f = _lineEdit->font();
         f.setFamily("monospace");
         f.setStyleHint(QFont::Monospace);
@@ -104,8 +105,18 @@ MainWindow::MainWindow(QWidget *parent) :
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
     _serialSendTimer->setInterval(50);
-    _xyCheckbox->setChecked(false); // TODO make this a saved setting
-    _xyOscilloscope->setVisible(_xyCheckbox->isChecked());
+
+    // TODO make these settings saved between program launches
+    _actions->viewOscilloscope->setChecked(true);
+    _actions->viewXYScope->setChecked(false);
+    _actions->viewConsole->setChecked(true);
+    // TODO find a better solution to the side effects of setVisible(true) when it's already visible but not shown yet
+    if (!_actions->viewOscilloscope->isChecked())
+        _oscilloscope->setVisible(_actions->viewOscilloscope->isChecked());
+    if (!_actions->viewXYScope->isChecked())
+        _xyOscilloscope->setVisible(_actions->viewXYScope->isChecked());
+    if (!_actions->viewConsole->isChecked())
+        _textLog->setVisible(_actions->viewConsole->isChecked());
 
     // populate config dialog
     {
@@ -121,20 +132,21 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
     setWindowTitle(QCoreApplication::applicationName());
+    setMenuBar(_menuBar);
     {
         QToolBar * const toolbar = new QToolBar;
         toolbar->setObjectName("ConnectionToolBar");
         // toolbar->addWidget(new QPushButton("Refresh"));
         toolbar->addWidget(_portList);
-        toolbar->addWidget(_connectButton);
-        toolbar->addWidget(_disconnectButton);
+        toolbar->addAction(_actions->serialConnect);
+        toolbar->addAction(_actions->serialDisconnect);
         toolbar->addSeparator();
         toolbar->addWidget(_clearButton);
         toolbar->addSeparator();
         toolbar->addWidget(_disableButton);
         toolbar->addWidget(_enableButton);
         toolbar->addWidget(_jogCheckbox);
-        toolbar->addWidget(_xyCheckbox);
+        toolbar->addAction(_actions->viewXYScope);
         toolbar->addWidget(_configButton);
         addToolBar(toolbar);
     }
@@ -157,15 +169,20 @@ MainWindow::MainWindow(QWidget *parent) :
         setCentralWidget(dummy);
     }
 
+    connect(_actions->fileQuit, SIGNAL(triggered()), qApp, SLOT(quit()), Qt::QueuedConnection);
+    connect(_actions->viewOscilloscope, SIGNAL(toggled(bool)), _oscilloscope, SLOT(setVisible(bool)));
+    connect(_actions->viewXYScope, SIGNAL(toggled(bool)), _xyOscilloscope, SLOT(setVisible(bool)));
+    connect(_actions->viewConsole, SIGNAL(toggled(bool)), _textLog, SLOT(setVisible(bool)));
+    connect(_menuBar->portMenu, SIGNAL(aboutToShow()), this, SLOT(slot_PortListClicked()));
+    connect(_menuBar->portGroup, SIGNAL(triggered(QAction *)), this, SLOT(slot_PortItemSelected(QAction *)));
     connect(_portList, SIGNAL(clicked()), this, SLOT(slot_PortListClicked()));
     connect(_portList, SIGNAL(currentIndexChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
-    connect(_connectButton, SIGNAL(clicked()), this, SLOT(slot_ConnectClicked()));
-    connect(_disconnectButton, SIGNAL(clicked()), this, SLOT(slot_DisconnectClicked()));
+    connect(_actions->serialConnect, SIGNAL(triggered()), this, SLOT(slot_ConnectClicked()));
+    connect(_actions->serialDisconnect, SIGNAL(triggered()), this, SLOT(slot_DisconnectClicked()));
     connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
     connect(_disableButton, SIGNAL(clicked()), this, SLOT(slot_DisableClicked()));
     connect(_enableButton, SIGNAL(clicked()), this, SLOT(slot_EnableClicked()));
     connect(_jogCheckbox, SIGNAL(toggled(bool)), this, SLOT(slot_JogToggled(bool)));
-    connect(_xyCheckbox, SIGNAL(toggled(bool)), _xyOscilloscope, SLOT(setVisible(bool)));
     connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
     connect(_configSaveButton, SIGNAL(clicked()), this, SLOT(slot_SaveClicked()));
     connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
@@ -196,6 +213,12 @@ void MainWindow::slot_PortListClicked()
 {
     _RepopulateDeviceList();
     slot_UpdateButtons();
+}
+
+void MainWindow::slot_PortItemSelected(QAction *act)
+{
+    _portList->setCurrentText(act->text());
+    // TODO have the action call setChecked(true) in reaction to the drop-down list version being selected...
 }
 
 void MainWindow::slot_ConnectClicked()
@@ -461,8 +484,8 @@ void MainWindow::slot_UpdateButtons()
     const bool portOpen = _serialPort->isOpen();
     const bool hasCommand = !_lineEdit->text().isEmpty();
     _portList->setEnabled(!portOpen || !portSelected);
-    _connectButton->setEnabled(!portOpen && portSelected);
-    _disconnectButton->setEnabled(portOpen);
+    _actions->serialConnect->setEnabled(!portOpen && portSelected);
+    _actions->serialDisconnect->setEnabled(portOpen);
     _clearButton->setEnabled(!_textLog->document()->isEmpty());
     _enableButton->setEnabled(portOpen);
     _configButton->setEnabled(portOpen);
@@ -571,7 +594,9 @@ void MainWindow::_DoJogging()
 
 void MainWindow::_RepopulateDeviceList()
 {
+    const QString oldPortName = _portList->currentText();
     _portList->clear();
+    _menuBar->portMenu->clear();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (QList<QSerialPortInfo>::const_iterator it = ports.begin(); it != ports.end(); ++it)
     {
@@ -581,6 +606,14 @@ void MainWindow::_RepopulateDeviceList()
           && it->productIdentifier()== STMBL_USB_PRODUCT_ID))
         {
             _portList->addItem(it->portName());
+            QAction * const act = _menuBar->portMenu->addAction(it->portName());
+            act->setCheckable(true);
+            _menuBar->portGroup->addAction(act);
+            if (it->portName() == oldPortName)
+            {
+                _portList->setCurrentIndex(_portList->count()-1);
+                act->setChecked(true);
+            }
         }
     }
 }

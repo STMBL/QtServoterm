@@ -36,6 +36,8 @@ QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
 
+class Actions;
+class MenuBar;
 class ClickableComboBox;
 class Oscilloscope;
 class XYOscilloscope;
@@ -50,6 +52,7 @@ public:
     ~MainWindow();
 protected slots:
     void slot_PortListClicked();
+    void slot_PortItemSelected(QAction *act);
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
     void slot_EmergencyStop();
@@ -80,14 +83,13 @@ protected:
     void _saveSettings();
     void _loadSettings();
 
+    Actions *_actions;
+    MenuBar *_menuBar;
     ClickableComboBox *_portList;
-    QPushButton *_connectButton;
-    QPushButton *_disconnectButton;
     QPushButton *_clearButton;
     QPushButton *_disableButton;
     QPushButton *_enableButton;
     QCheckBox *_jogCheckbox;
-    QCheckBox *_xyCheckbox;
     QPushButton *_configButton;
     Oscilloscope *_oscilloscope;
     XYOscilloscope *_xyOscilloscope;

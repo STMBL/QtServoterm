@@ -94,6 +94,7 @@ MainWindow::MainWindow(QWidget *parent) :
         f.setFamily("monospace");
         f.setStyleHint(QFont::Monospace);
         _lineEdit->setFont(f);
+        _configEdit->setFont(f); // TODO this is a bit out of place, but should work just fine
     }
     setAcceptDrops(true);
     qApp->installEventFilter(this);

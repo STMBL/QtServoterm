@@ -33,13 +33,17 @@ HistoryLineEdit::HistoryLineEdit(QWidget *parent) : QLineEdit(parent)
 
 void HistoryLineEdit::saveLine()
 {
-    if (text().trimmed().isEmpty())
+    const QString line = text().trimmed();
+    if (line.isEmpty())
+        return;
+    // prevent duplicate entries
+    if (_history.size() >= 2 && _history.at(1) == line)
         return;
     // make sure we don't go over MAX_HISTORY entries
     // (+1 for the "stash" for the newest line)
     if (_history.size() >= MAX_HISTORY+1)
         _history.pop_back();
-    _history.insert(1, text());
+    _history.insert(1, line);
     _current = _history.begin();
 }
 

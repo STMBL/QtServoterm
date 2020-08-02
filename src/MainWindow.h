@@ -52,7 +52,8 @@ public:
     ~MainWindow();
 protected slots:
     void slot_PortListClicked();
-    void slot_PortItemSelected(QAction *act);
+    void slot_PortLineEditChanged(const QString &portName);
+    void slot_PortMenuItemSelected(QAction *act);
     void slot_ConnectClicked();
     void slot_DisconnectClicked();
     void slot_EmergencyStop();

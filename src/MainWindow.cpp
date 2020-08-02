@@ -81,6 +81,20 @@ MainWindow::MainWindow(QWidget *parent) :
     _leftPressed(false),
     _rightPressed(false)
 {
+    _portList->setEditable(true);
+    {
+        static const QString exampleIP = "xxx.xxx.xxx.xxx:yyyyy";
+        QFontMetrics fm(_portList->font());
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 11, 0))
+        const int fw = fm.horizontalAdvance(exampleIP);
+#else
+        const int fw = fm.width(exampleIP);
+#endif
+        _portList->setMinimumWidth(fw+30); // TODO figure out a better way of calculating a good width!
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
+    _portList->setPlaceholderText("ip address/port or USB device name");
+#endif
+    }
     _textLog->setReadOnly(true);
     {
         QTextDocument * const doc = _textLog->document();
@@ -174,9 +188,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_actions->viewXYScope, &QAction::toggled, _xyOscilloscope, &QWidget::setVisible);
     connect(_actions->viewConsole, &QAction::toggled, _textLog, &QWidget::setVisible);
     connect(_menuBar->portMenu, &QMenu::aboutToShow, this, &MainWindow::slot_PortListClicked);
-    connect(_menuBar->portGroup, &QActionGroup::triggered, this, &MainWindow::slot_PortItemSelected);
+    connect(_menuBar->portGroup, &QActionGroup::triggered, this, &MainWindow::slot_PortMenuItemSelected);
     connect(_portList, &ClickableComboBox::clicked, this, &MainWindow::slot_PortListClicked);
-    connect(_portList, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::slot_UpdateButtons); // TODO <int> should maybe be <const QString &>?
+    connect(_portList, &QComboBox::currentTextChanged, this, &MainWindow::slot_PortLineEditChanged);
     connect(_actions->serialConnect, &QAction::triggered, this, &MainWindow::slot_ConnectClicked);
     connect(_actions->serialDisconnect, &QAction::triggered, this, &MainWindow::slot_DisconnectClicked);
     connect(_clearButton, &QAbstractButton::clicked, _textLog, &QTextEdit::clear);
@@ -215,10 +229,31 @@ void MainWindow::slot_PortListClicked()
     slot_UpdateButtons();
 }
 
-void MainWindow::slot_PortItemSelected(QAction *act)
+void MainWindow::slot_PortLineEditChanged(const QString &portName)
+{
+    QList<QAction*> acts = _menuBar->portGroup->actions();
+    bool found = false;
+    for (QList<QAction*>::const_iterator it = acts.begin(); it != acts.end(); ++it)
+    {
+        QAction * const act = *it;
+        if (act->text() == portName)
+        {
+            act->setChecked(true);
+            found = true;
+        }
+    }
+    if (!found)
+    {
+        QAction * const checkedAct = _menuBar->portGroup->checkedAction();
+        if (checkedAct)
+            checkedAct->setChecked(false);
+    }
+    slot_UpdateButtons();
+}
+
+void MainWindow::slot_PortMenuItemSelected(QAction *act)
 {
     _portList->setCurrentText(act->text());
-    // TODO have the action call setChecked(true) in reaction to the drop-down list version being selected...
 }
 
 void MainWindow::slot_ConnectClicked()
@@ -594,10 +629,9 @@ void MainWindow::_DoJogging()
 
 void MainWindow::_RepopulateDeviceList()
 {
-    const QString oldPortName = _portList->currentText();
-    _portList->clear();
-    _menuBar->portMenu->clear();
+    // build new list of ports
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+    QStringList portNames;
     for (QList<QSerialPortInfo>::const_iterator it = ports.begin(); it != ports.end(); ++it)
     {
         if (it->manufacturer().contains("STMicroelectronics")
@@ -605,15 +639,48 @@ void MainWindow::_RepopulateDeviceList()
          || (it->vendorIdentifier() == STMBL_USB_VENDOR_ID
           && it->productIdentifier()== STMBL_USB_PRODUCT_ID))
         {
-            _portList->addItem(it->portName());
-            QAction * const act = _menuBar->portMenu->addAction(it->portName());
-            act->setCheckable(true);
-            _menuBar->portGroup->addAction(act);
-            if (it->portName() == oldPortName)
-            {
-                _portList->setCurrentIndex(_portList->count()-1);
-                act->setChecked(true);
-            }
+            portNames.append(it->portName());
+        }
+    }
+
+    // build old list of ports
+    QStringList oldPortNames;
+    for (int i = 0; i < _portList->count(); i++)
+    {
+        oldPortNames.append(_portList->itemText(i));
+    }
+
+    // possibly add fake ports for testing/development purposes
+    if (0)
+    {
+        QStringList fakePorts = {"/dev/ttyUSB0", "/dev/ttyACM0", "/dev/ttyS0"};
+        portNames += fakePorts;
+    }
+
+    // nothing changed, exit early
+    if (portNames == oldPortNames)
+        return;
+
+    // remember the currently selected port so we can reselect it
+    const QString oldPortName = _portList->currentText();
+    
+    // rebuild the user interface items for the selectable ports
+    _portList->clear();
+    _menuBar->portMenu->clear();
+    for (QStringList::const_iterator it = portNames.begin(); it != portNames.end(); ++it)
+    {
+        // NOTE: the combo-box entry must be added after the menu
+        // bar entry due to the way the menu bar reacts to changes
+        // in the line edit
+        const QString portName = *it;
+        QAction * const act = _menuBar->portMenu->addAction(portName);
+        act->setCheckable(true);
+        _menuBar->portGroup->addAction(act);
+        _portList->addItem(portName);
+        if (portName == oldPortName)
+        {
+            act->setChecked(true);
+            _portList->setCurrentIndex(_portList->count()-1);
         }
     }
 }

@@ -4,12 +4,11 @@ Qt version of stmbl Servoterm. It is still a work in progress, stay tuned!
 
 ## Dependencies
 
-* Qt5 (widgets, charts, and serialport modules)
+* Qt5 (widgets and serialport modules)
 
 The relevant development packages to install on Ubuntu 18.04 are:
 
 * qt5-default
-* libqt5charts5-dev
 * libqt5serialport5-dev
 
 ## Compiling

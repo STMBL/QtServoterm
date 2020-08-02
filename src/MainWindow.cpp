@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _lineEdit(new HistoryLineEdit),
     _sendButton(new QPushButton("Send")),
     _serialPort(new QSerialPort(this)),
-    _settings(nullptr),
+    _settings(new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName(), this)),
     _demux(new ScopeDataDemux(this)),
     _configDialog(new QDialog(this)),
     _configEdit(new QPlainTextEdit),
@@ -81,7 +81,6 @@ MainWindow::MainWindow(QWidget *parent) :
     _leftPressed(false),
     _rightPressed(false)
 {
-    _settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
     _textLog->setReadOnly(true);
     {
         QTextDocument * const doc = _textLog->document();

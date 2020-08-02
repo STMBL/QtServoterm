@@ -4,9 +4,12 @@ servoterm.pro.user
 # built objects and executables
 *.o
 Servoterm
+Servoterm_debug
 
 # qmake/MOC generated files
 .qmake.stash
 Makefile
+Makefile.Debug
+Makefile.Release
 moc_*.cpp
 moc_*.h

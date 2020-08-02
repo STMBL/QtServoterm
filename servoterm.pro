@@ -1,4 +1,5 @@
 QT += widgets serialport
+CONFIG += object_parallel_to_source
 
 HEADERS = \
 src/Actions.h \
@@ -22,3 +23,14 @@ src/MainWindow.cpp \
 src/main.cpp
 
 TARGET = Servoterm
+
+CONFIG(release, debug|release) {
+OBJECTS_DIR=build_release/obj
+MOC_DIR=build_release/moc
+}
+CONFIG(debug, debug|release) {
+OBJECTS_DIR=build_debug/obj
+MOC_DIR=build_debug/moc
+TARGET = Servoterm_debug
+}
+

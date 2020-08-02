@@ -34,7 +34,7 @@ XYOscilloscope::XYOscilloscope(QWidget *parent) :
     _timer(new QTimer(this))
 {
     _timer->setInterval(50);
-    connect(_timer, SIGNAL(timeout()), this, SLOT(slot_FadeTimeout()));
+    connect(_timer, &QTimer::timeout, this, &XYOscilloscope::slot_FadeTimeout);
     setMinimumSize(MINIMUM_PLOT_SIZE, MINIMUM_PLOT_SIZE); // TODO set a square aspect ratio somehow
     _plot.fill(Qt::white);
 }

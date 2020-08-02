@@ -170,35 +170,35 @@ MainWindow::MainWindow(QWidget *parent) :
         setCentralWidget(dummy);
     }
 
-    connect(_actions->fileQuit, SIGNAL(triggered()), qApp, SLOT(quit()), Qt::QueuedConnection);
-    connect(_actions->viewOscilloscope, SIGNAL(toggled(bool)), _oscilloscope, SLOT(setVisible(bool)));
-    connect(_actions->viewXYScope, SIGNAL(toggled(bool)), _xyOscilloscope, SLOT(setVisible(bool)));
-    connect(_actions->viewConsole, SIGNAL(toggled(bool)), _textLog, SLOT(setVisible(bool)));
-    connect(_menuBar->portMenu, SIGNAL(aboutToShow()), this, SLOT(slot_PortListClicked()));
-    connect(_menuBar->portGroup, SIGNAL(triggered(QAction *)), this, SLOT(slot_PortItemSelected(QAction *)));
-    connect(_portList, SIGNAL(clicked()), this, SLOT(slot_PortListClicked()));
-    connect(_portList, SIGNAL(currentIndexChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
-    connect(_actions->serialConnect, SIGNAL(triggered()), this, SLOT(slot_ConnectClicked()));
-    connect(_actions->serialDisconnect, SIGNAL(triggered()), this, SLOT(slot_DisconnectClicked()));
-    connect(_clearButton, SIGNAL(clicked()), _textLog, SLOT(clear()));
-    connect(_disableButton, SIGNAL(clicked()), this, SLOT(slot_DisableClicked()));
-    connect(_enableButton, SIGNAL(clicked()), this, SLOT(slot_EnableClicked()));
-    connect(_jogCheckbox, SIGNAL(toggled(bool)), this, SLOT(slot_JogToggled(bool)));
-    connect(_configButton, SIGNAL(clicked()), this, SLOT(slot_ConfigClicked()));
-    connect(_configSaveButton, SIGNAL(clicked()), this, SLOT(slot_SaveClicked()));
-    connect(_lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(slot_UpdateButtons()));
-    connect(_lineEdit, SIGNAL(returnPressed()), _sendButton, SLOT(click()));
-    connect(_sendButton, SIGNAL(clicked()), this, SLOT(slot_SendClicked()));
-    connect(_serialPort, SIGNAL(readyRead()), this, SLOT(slot_SerialDataReceived()));
-    connect(_serialPort, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this, SLOT(slot_SerialErrorOccurred(QSerialPort::SerialPortError)));
-    // connect(_serialPort, SIGNAL(readChannelFinished()), this, SLOT(slot_SerialPortClosed())); // NOTE: doesn't seem to actually work
-    connect(_demux, SIGNAL(scopePacketReceived(const QVector<float> &)), this, SLOT(slot_ScopePacketReceived(const QVector<float> &)));
-    connect(_demux, SIGNAL(scopeResetReceived()), this, SLOT(slot_ScopeResetReceived()));
-    connect(_textLog, SIGNAL(textChanged()), this, SLOT(slot_UpdateButtons()));
-    connect(_configEdit, SIGNAL(textChanged()), this, SLOT(slot_ConfigTextChanged()));
-    connect(_estopShortcut, SIGNAL(activated()), this, SLOT(slot_EmergencyStop()));
-    connect(_redirectingTimer, SIGNAL(timeout()), this, SLOT(slot_ConfigReceiveTimeout()));
-    connect(_serialSendTimer, SIGNAL(timeout()), this, SLOT(slot_SerialSendFromQueue()));
+    connect(_actions->fileQuit, &QAction::triggered, qApp, &QCoreApplication::quit, Qt::QueuedConnection);
+    connect(_actions->viewOscilloscope, &QAction::toggled, _oscilloscope, &QWidget::setVisible);
+    connect(_actions->viewXYScope, &QAction::toggled, _xyOscilloscope, &QWidget::setVisible);
+    connect(_actions->viewConsole, &QAction::toggled, _textLog, &QWidget::setVisible);
+    connect(_menuBar->portMenu, &QMenu::aboutToShow, this, &MainWindow::slot_PortListClicked);
+    connect(_menuBar->portGroup, &QActionGroup::triggered, this, &MainWindow::slot_PortItemSelected);
+    connect(_portList, &ClickableComboBox::clicked, this, &MainWindow::slot_PortListClicked);
+    connect(_portList, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::slot_UpdateButtons); // TODO <int> should maybe be <const QString &>?
+    connect(_actions->serialConnect, &QAction::triggered, this, &MainWindow::slot_ConnectClicked);
+    connect(_actions->serialDisconnect, &QAction::triggered, this, &MainWindow::slot_DisconnectClicked);
+    connect(_clearButton, &QAbstractButton::clicked, _textLog, &QTextEdit::clear);
+    connect(_disableButton, &QAbstractButton::clicked, this, &MainWindow::slot_DisableClicked);
+    connect(_enableButton, &QAbstractButton::clicked, this, &MainWindow::slot_EnableClicked);
+    connect(_jogCheckbox, &QAbstractButton::toggled, this, &MainWindow::slot_JogToggled);
+    connect(_configButton, &QAbstractButton::clicked, this, &MainWindow::slot_ConfigClicked);
+    connect(_configSaveButton, &QAbstractButton::clicked, this, &MainWindow::slot_SaveClicked);
+    connect(_lineEdit, &QLineEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
+    connect(_lineEdit, &QLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
+    connect(_sendButton, &QAbstractButton::clicked, this, &MainWindow::slot_SendClicked);
+    connect(_serialPort, &QIODevice::readyRead, this, &MainWindow::slot_SerialDataReceived);
+    connect(_serialPort, &QSerialPort::errorOccurred, this, &MainWindow::slot_SerialErrorOccurred);
+    // connect(_serialPort, &QIODevice::readChannelFinished, this, &MainWindow::slot_SerialPortClosed); // NOTE: doesn't seem to actually work
+    connect(_demux, &ScopeDataDemux::scopePacketReceived, this, &MainWindow::slot_ScopePacketReceived);
+    connect(_demux, &ScopeDataDemux::scopeResetReceived, this, &MainWindow::slot_ScopeResetReceived);
+    connect(_textLog, &QTextEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
+    connect(_configEdit, &QPlainTextEdit::textChanged, this, &MainWindow::slot_ConfigTextChanged);
+    connect(_estopShortcut, &QShortcut::activated, this, &MainWindow::slot_EmergencyStop);
+    connect(_redirectingTimer, &QTimer::timeout, this, &MainWindow::slot_ConfigReceiveTimeout);
+    connect(_serialSendTimer, &QTimer::timeout, this, &MainWindow::slot_SerialSendFromQueue);
     slot_ConfigTextChanged(); // show the initial byte count
     slot_UpdateButtons();
 

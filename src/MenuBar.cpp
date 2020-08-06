@@ -27,11 +27,11 @@ MenuBar::MenuBar(Actions *actions, QWidget *parent) : QMenuBar(parent)
     QMenu * const fileMenu = addMenu("&File");
     fileMenu->addAction(actions->fileQuit);
 
-    QMenu * const serialMenu = addMenu("Serial");
-    serialMenu->addAction(actions->serialConnect);
-    serialMenu->addAction(actions->serialDisconnect);
-    serialMenu->addSeparator();
-    portMenu = serialMenu->addMenu("Port");
+    QMenu * const connectionMenu = addMenu("Connection");
+    connectionMenu->addAction(actions->connectionConnect);
+    connectionMenu->addAction(actions->connectionDisconnect);
+    connectionMenu->addSeparator();
+    portMenu = connectionMenu->addMenu("Port");
     portGroup = new QActionGroup(this);
     portGroup->setExclusive(true);
 

@@ -24,8 +24,8 @@ namespace STMBL_Servoterm {
 Actions::Actions(QObject *parent) : QObject(parent)
 {
     fileQuit = new QAction("&Quit", this);
-    serialConnect = new QAction("Connect", this);
-    serialDisconnect = new QAction("Disconnect", this);
+    connectionConnect = new QAction("Connect", this);
+    connectionDisconnect = new QAction("Disconnect", this);
     viewOscilloscope = new QAction("Show Oscilloscope", this);
     viewXYScope = new QAction("Show X/Y Scope", this);
     viewConsole = new QAction("Show Console Output", this); // TODO change this to "Show Console"

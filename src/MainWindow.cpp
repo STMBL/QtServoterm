@@ -21,6 +21,9 @@
 #include <QToolBar>
 #include <QSettings>
 #include <QSerialPortInfo>
+#include <QTcpSocket>
+#include <QHostAddress>
+#include <QRegExp>
 #include <QTextEdit>
 #include <QPlainTextEdit>
 #include <QLineEdit>
@@ -42,6 +45,8 @@
 #include "XYOscilloscope.h"
 #include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
+
+#include <limits>
 
 namespace STMBL_Servoterm {
 
@@ -68,6 +73,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _lineEdit(new HistoryLineEdit),
     _sendButton(new QPushButton("Send")),
     _serialPort(new QSerialPort(this)),
+    _tcpSocket(new QTcpSocket(this)),
     _settings(new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName(), this)),
     _demux(new ScopeDataDemux(this)),
     _configDialog(new QDialog(this)),
@@ -152,8 +158,8 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->setObjectName("ConnectionToolBar");
         // toolbar->addWidget(new QPushButton("Refresh"));
         toolbar->addWidget(_portList);
-        toolbar->addAction(_actions->serialConnect);
-        toolbar->addAction(_actions->serialDisconnect);
+        toolbar->addAction(_actions->connectionConnect);
+        toolbar->addAction(_actions->connectionDisconnect);
         toolbar->addSeparator();
         toolbar->addWidget(_clearButton);
         toolbar->addSeparator();
@@ -190,21 +196,26 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_menuBar->portMenu, &QMenu::aboutToShow, this, &MainWindow::slot_PortListClicked);
     connect(_menuBar->portGroup, &QActionGroup::triggered, this, &MainWindow::slot_PortMenuItemSelected);
     connect(_portList, &ClickableComboBox::clicked, this, &MainWindow::slot_PortListClicked);
-    connect(_portList, &QComboBox::currentTextChanged, this, &MainWindow::slot_PortLineEditChanged);
-    connect(_actions->serialConnect, &QAction::triggered, this, &MainWindow::slot_ConnectClicked);
-    connect(_actions->serialDisconnect, &QAction::triggered, this, &MainWindow::slot_DisconnectClicked);
-    connect(_clearButton, &QAbstractButton::clicked, _textLog, &QTextEdit::clear);
-    connect(_disableButton, &QAbstractButton::clicked, this, &MainWindow::slot_DisableClicked);
-    connect(_enableButton, &QAbstractButton::clicked, this, &MainWindow::slot_EnableClicked);
-    connect(_jogCheckbox, &QAbstractButton::toggled, this, &MainWindow::slot_JogToggled);
-    connect(_configButton, &QAbstractButton::clicked, this, &MainWindow::slot_ConfigClicked);
-    connect(_configSaveButton, &QAbstractButton::clicked, this, &MainWindow::slot_SaveClicked);
-    connect(_lineEdit, &QLineEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
-    connect(_lineEdit, &QLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
-    connect(_sendButton, &QAbstractButton::clicked, this, &MainWindow::slot_SendClicked);
-    connect(_serialPort, &QIODevice::readyRead, this, &MainWindow::slot_SerialDataReceived);
+    connect(_portList, &ClickableComboBox::currentTextChanged, this, &MainWindow::slot_PortLineEditChanged);
+    connect(_actions->connectionConnect, &QAction::triggered, this, &MainWindow::slot_ConnectClicked);
+    connect(_actions->connectionDisconnect, &QAction::triggered, this, &MainWindow::slot_DisconnectClicked);
+    connect(_clearButton, &QPushButton::clicked, _textLog, &QTextEdit::clear);
+    connect(_disableButton, &QPushButton::clicked, this, &MainWindow::slot_DisableClicked);
+    connect(_enableButton, &QPushButton::clicked, this, &MainWindow::slot_EnableClicked);
+    connect(_jogCheckbox, &QCheckBox::toggled, this, &MainWindow::slot_JogToggled);
+    connect(_configButton, &QPushButton::clicked, this, &MainWindow::slot_ConfigClicked);
+    connect(_configSaveButton, &QPushButton::clicked, this, &MainWindow::slot_SaveClicked);
+    connect(_lineEdit, &HistoryLineEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
+    connect(_lineEdit, &HistoryLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
+    connect(_sendButton, &QPushButton::clicked, this, &MainWindow::slot_SendClicked);
+    connect(_serialPort, &QSerialPort::readyRead, this, &MainWindow::slot_SerialDataReceived);
     connect(_serialPort, &QSerialPort::errorOccurred, this, &MainWindow::slot_SerialErrorOccurred);
-    // connect(_serialPort, &QIODevice::readChannelFinished, this, &MainWindow::slot_SerialPortClosed); // NOTE: doesn't seem to actually work
+    // connect(_serialPort, &QSerialPort::readChannelFinished, this, &MainWindow::slot_SerialPortClosed); // NOTE: doesn't seem to actually work
+    connect(_tcpSocket, &QTcpSocket::stateChanged, this, &MainWindow::slot_SocketStateChanged);
+    connect(_tcpSocket, &QTcpSocket::readyRead, this, &MainWindow::slot_SocketDataReceived);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
+    connect(_tcpSocket, &QTcpSocket::errorOccurred, this, &MainWindow::slot_SocketErrorOccurred);
+#endif
     connect(_demux, &ScopeDataDemux::scopePacketReceived, this, &MainWindow::slot_ScopePacketReceived);
     connect(_demux, &ScopeDataDemux::scopeResetReceived, this, &MainWindow::slot_ScopeResetReceived);
     connect(_textLog, &QTextEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
@@ -258,39 +269,74 @@ void MainWindow::slot_PortMenuItemSelected(QAction *act)
 
 void MainWindow::slot_ConnectClicked()
 {
-    if (_serialPort->isOpen())
+    if (_IsConnected())
     {
-        QMessageBox::critical(this, "Error opening serial port", "Already connected! Currently open port is: \"" + _serialPort->portName() + "\"");
+        if (_serialPort->isOpen())
+        {
+            QMessageBox::critical(this, "Error opening serial port", "Already connected! Currently open port is: \"" + _serialPort->portName() + "\"");
+        }
+        else // it must be the network connection
+        {
+            QMessageBox::critical(this, "Error connecting to IP", "Already connected! Currently connected to: \"" + _tcpSocket->peerAddress().toString() + "\"");
+        }
         return;
     }
     const QString portName = _portList->currentText();
-    if (portName.isEmpty())
+    const bool isValidSerialPort = !QSerialPortInfo(portName).isNull();
+    if (isValidSerialPort)
     {
-        QMessageBox::critical(this, "Error opening serial port", "No port selected!");
-        return;
+        if (portName.isEmpty())
+        {
+            QMessageBox::critical(this, "Error opening serial port", "No port selected!");
+            return;
+        }
+        _serialPort->setPortName(portName);
+        if (!_serialPort->open(QIODevice::ReadWrite))
+        {
+            QMessageBox::critical(this, "Error opening serial port", "Unable to open port \"" + portName + "\"");
+            return;
+        }
+        AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">connected</font>");
+        AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+        slot_UpdateButtons();
     }
-    _serialPort->setPortName(portName);
-    if (!_serialPort->open(QIODevice::ReadWrite))
+    else // must be IP (or maybe even hostname?)
     {
-        QMessageBox::critical(this, "Error opening serial port", "Unable to open port \"" + portName + "\"");
-        return;
+        const QStringList parts = portName.split(':');
+        const bool isValidNetworkPort = (parts.size() == 2) && QRegExp("\\d*").exactMatch(parts.at(1)) && parts.at(1).toInt() <= std::numeric_limits<quint16>::max();
+        if (!isValidNetworkPort)
+        {
+            QMessageBox::critical(this, "Error connecting", "Unable to interpret \"" + portName + "\" as a serial port device name nor as an IP/port");
+            return;
+        }
+        const QString ip = parts.at(0);
+        const quint16 port = parts.at(1).toInt();
+        _tcpSocket->connectToHost(ip, port);
     }
-    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">connected</font>");
-    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
-    slot_UpdateButtons();
 }
 
 void MainWindow::slot_DisconnectClicked()
 {
-    if (!_serialPort->isOpen())
+    if (_IsDisconnected())
     {
-        QMessageBox::critical(this, "Error closing serial port", "Already disconnected!");
+        QMessageBox::critical(this, "Error disconnecting", "Already disconnected!");
         return;
     }
-    _serialPort->close();
-    if (_serialPort->isOpen())
+    _Disconnect();
+    if (!_IsDisconnected())
     {
-        QMessageBox::critical(this, "Error closing serial port", "Unknown reason -- it is open, but cannot be closed?");
+        if (_serialPort->isOpen())
+        {
+            QMessageBox::critical(this, "Error closing serial port", "Unknown reason -- it is open, but cannot be closed?");
+        }
+        else if (_tcpSocket->state() != QAbstractSocket::UnconnectedState && _tcpSocket->state() != QAbstractSocket::ConnectedState)
+        {
+            QMessageBox::critical(this, "Error disconnecting", "a network connection is in the middle of trying to connect");
+        }
+        else
+        {
+            QMessageBox::critical(this, "Error disconnecting", "Unknown reason -- it is open, but cannot be closed?");
+        }
         return;
     }
     AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
@@ -306,23 +352,23 @@ void MainWindow::slot_EmergencyStop()
 
 void MainWindow::slot_DisableClicked()
 {
-    if (!_serialPort->isOpen())
+    if (!_IsConnected())
     {
         QMessageBox::warning(this, "Error sending reset commands", "Serial port not open!");
         return;
     }
-    _serialPort->write(QString("fault0.en = 0\n").toLatin1());
+    _SendData(QString("fault0.en = 0\n").toLatin1());
 }
 
 void MainWindow::slot_EnableClicked()
 {
-    if (!_serialPort->isOpen())
+    if (!_IsConnected())
     {
         QMessageBox::warning(this, "Error sending reset commands", "Serial port not open!");
         return;
     }
-    _serialPort->write(QString("fault0.en = 0\n").toLatin1());
-    _serialPort->write(QString("fault0.en = 1\n").toLatin1());
+    _SendData(QString("fault0.en = 0\n").toLatin1());
+    _SendData(QString("fault0.en = 1\n").toLatin1());
 }
 
 void MainWindow::slot_JogToggled(bool on)
@@ -333,19 +379,19 @@ void MainWindow::slot_JogToggled(bool on)
 
 void MainWindow::slot_ConfigClicked()
 {
-    if (_serialPort->isOpen())
+    if (_IsConnected())
     {
         _redirectingTimer->start();
         _redirectingToConfigEdit = true;
         _configEdit->clear();
-        _serialPort->write(QString("showconf\n").toLatin1());
+        _SendData(QString("showconf\n").toLatin1());
     }
     _configDialog->exec();
 }
 
 void MainWindow::slot_SaveClicked()
 {
-    if (_serialPort->isOpen())
+    if (_IsConnected())
     {
         _configDialog->hide();
         const QStringList lines = _configEdit->document()->toPlainText().split('\n', QString::KeepEmptyParts);
@@ -368,17 +414,17 @@ void MainWindow::slot_ConfigReceiveTimeout()
 
 void MainWindow::slot_SerialSendFromQueue()
 {
-    if (!_serialPort->isOpen())
+    if (!_IsConnected())
         _txQueue.clear();
     if (!_txQueue.isEmpty())
-        _serialPort->write((_txQueue.takeFirst() + '\n').toLatin1());
+        _SendData((_txQueue.takeFirst() + '\n').toLatin1());
     if (_txQueue.isEmpty())
         _serialSendTimer->stop();
 }
 
 void MainWindow::slot_SendClicked()
 {
-    if (!_serialPort->isOpen())
+    if (!_IsConnected())
     {
         QMessageBox::warning(this, "Error sending command", "Serial port not open!");
         return;
@@ -386,7 +432,7 @@ void MainWindow::slot_SendClicked()
     const QString line = _lineEdit->text();
     _lineEdit->saveLine();
     _lineEdit->clear();
-    _serialPort->write((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
+    _SendData((line + "\n").toLatin1()); // TODO perhaps have more intelligent Unicode conversion?
 }
 
 template<typename T, typename M>
@@ -453,15 +499,15 @@ void MainWindow::slot_SerialErrorOccurred(QSerialPort::SerialPortError error)
     }
     if (errorMsg.isEmpty())
     {
-        QMetaEnum metaEnum = QMetaEnum::fromType<QSerialPort::SerialPortError>();
+        const QMetaEnum metaEnum = QMetaEnum::fromType<QSerialPort::SerialPortError>();
         AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, QString("<font color=\"FireBrick\">serial port \"QSerialPort::") + metaEnum.valueToKey(error) + "\"</font>");
         AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
     }
     if (forceClose)
     {
-        const bool before = _serialPort->isOpen();
-        _serialPort->close();
-        const bool after = _serialPort->isOpen();
+        const bool before = _IsConnected();
+        _Disconnect();
+        const bool after = _IsConnected();
         if (before != after)
         {
             AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
@@ -475,23 +521,30 @@ void MainWindow::slot_SerialErrorOccurred(QSerialPort::SerialPortError error)
 
 void MainWindow::slot_SerialDataReceived()
 {
-    const QByteArray buf = _serialPort->readAll();
-    const QString txt = _demux->addData(buf).replace("<=", "&lt;="); // HACK, we really need to stop interpreting the data as HTML...
-    if (!txt.isEmpty())
-    {
-        if (_redirectingToConfigEdit)
-        {
-            _redirectingTimer->start(); // extend (restart) timer to delay timeout
-            AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
-        }
-        else
-            AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
-    }
+    _HandleReceivedData(_serialPort->readAll());
 }
 
 /*void MainWindow::slot_SerialPortClosed()
 {
 }*/
+
+void MainWindow::slot_SocketStateChanged(QAbstractSocket::SocketState socketState)
+{
+    Q_UNUSED(socketState);
+    slot_UpdateButtons();
+}
+
+void MainWindow::slot_SocketErrorOccurred(QAbstractSocket::SocketError error)
+{
+    const QMetaEnum metaEnum = QMetaEnum::fromType<QAbstractSocket::SocketError>();
+    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, QString("<font color=\"FireBrick\">network connection \"QAbstractSocket::") + metaEnum.valueToKey(error) + "\"</font>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+}
+
+void MainWindow::slot_SocketDataReceived()
+{
+    _HandleReceivedData(_tcpSocket->readAll());
+}
 
 void MainWindow::slot_ScopePacketReceived(const QVector<float> &packet)
 {
@@ -516,11 +569,13 @@ void MainWindow::slot_ConfigTextChanged()
 void MainWindow::slot_UpdateButtons()
 {
     const bool portSelected = !_portList->currentText().isEmpty();
-    const bool portOpen = _serialPort->isOpen();
+    const bool portOpen = _IsConnected();
+    const bool portClosed = _IsDisconnected();
     const bool hasCommand = !_lineEdit->text().isEmpty();
-    _portList->setEnabled(!portOpen || !portSelected);
-    _actions->serialConnect->setEnabled(!portOpen && portSelected);
-    _actions->serialDisconnect->setEnabled(portOpen);
+    _portList->setEnabled(portClosed);
+    _menuBar->portGroup->setEnabled(portClosed);
+    _actions->connectionConnect->setEnabled(portClosed && portSelected);
+    _actions->connectionDisconnect->setEnabled(!portClosed);
     _clearButton->setEnabled(!_textLog->document()->isEmpty());
     _enableButton->setEnabled(portOpen);
     _configButton->setEnabled(portOpen);
@@ -589,9 +644,61 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     return QObject::eventFilter(obj, event);
 }
 
+bool MainWindow::_IsConnected() const
+{
+    // return _serialPort->isOpen() || _tcpSocket->isOpen();
+    return _serialPort->isOpen() || _tcpSocket->state() == QAbstractSocket::ConnectedState;
+}
+
+bool MainWindow::_IsDisconnected() const
+{
+    // return !_serialPort->isOpen() && !_tcpSocket->isOpen();
+    return !_serialPort->isOpen() && _tcpSocket->state() == QAbstractSocket::UnconnectedState;
+}
+
+void MainWindow::_Disconnect()
+{
+    if (_serialPort->isOpen())
+    {
+        _serialPort->close();
+    }
+    else // it must be the network connection
+    {
+        _tcpSocket->close();
+        // _tcpSocket->disconnectFromHost();
+    }
+}
+
+void MainWindow::_HandleReceivedData(const QByteArray &data)
+{
+    const QString txt = _demux->addData(data).replace("<=", "&lt;="); // HACK, we really need to stop interpreting the data as HTML...
+    if (!txt.isEmpty())
+    {
+        if (_redirectingToConfigEdit)
+        {
+            _redirectingTimer->start(); // extend (restart) timer to delay timeout
+            AppendTextToEdit(*_configEdit, &QPlainTextEdit::insertPlainText, txt);
+        }
+        else
+            AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, txt);
+    }
+}
+
+void MainWindow::_SendData(const QByteArray &data)
+{
+    if (_serialPort->isOpen())
+    {
+        _serialPort->write(data);
+    }
+    else if (_tcpSocket->isOpen())
+    {
+        _tcpSocket->write(data);
+    }
+}
+
 void MainWindow::_DoJogging()
 {
-    if (!_serialPort->isOpen())
+    if (!_IsConnected())
     {
         // _jogState = JOGGING_IDLE; // TODO set to an invalid value to force sending a sychronizing command after (re)connecting
         return;
@@ -614,15 +721,15 @@ void MainWindow::_DoJogging()
         switch (_jogState)
         {
             case JOGGING_CCW:
-            _serialPort->write("jogl\n");
+            _SendData("jogl\n");
             break;
 
             case JOGGING_CW:
-            _serialPort->write("jogr\n");
+            _SendData("jogr\n");
             break;
 
             default:
-            _serialPort->write("jogx\n");
+            _SendData("jogx\n");
         }
     }
 }

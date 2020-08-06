@@ -33,8 +33,8 @@ public:
     Actions(QObject *parent = nullptr);
 public:
     QAction *fileQuit;
-    QAction *serialConnect;
-    QAction *serialDisconnect;
+    QAction *connectionConnect;
+    QAction *connectionDisconnect;
     QAction *viewOscilloscope;
     QAction *viewXYScope;
     QAction *viewConsole;

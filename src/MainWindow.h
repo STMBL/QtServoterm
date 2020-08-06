@@ -23,6 +23,7 @@
 #include <QMainWindow>
 #include <QStringList>
 #include <QSerialPort>
+#include <QAbstractSocket>
 
 QT_BEGIN_NAMESPACE
 class QPushButton;
@@ -32,6 +33,7 @@ class QPlainTextEdit;
 class QLabel;
 class QShortcut;
 class QSettings;
+class QTcpSocket;
 QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
@@ -68,6 +70,9 @@ protected slots:
     void slot_SerialErrorOccurred(QSerialPort::SerialPortError error);
     void slot_SerialDataReceived();
     // void slot_SerialPortClosed();
+    void slot_SocketStateChanged(QAbstractSocket::SocketState socketState);
+    void slot_SocketErrorOccurred(QAbstractSocket::SocketError error);
+    void slot_SocketDataReceived();
     void slot_ScopePacketReceived(const QVector<float> &packet);
     void slot_ScopeResetReceived();
     void slot_ConfigTextChanged();
@@ -79,6 +84,11 @@ protected:
     void dropEvent(QDropEvent *event);*/
     void closeEvent(QCloseEvent *event);
     bool eventFilter(QObject *obj, QEvent *event);
+    bool _IsConnected() const;
+    bool _IsDisconnected() const;
+    void _Disconnect();
+    void _HandleReceivedData(const QByteArray &data);
+    void _SendData(const QByteArray &data);
     void _DoJogging();
     void _RepopulateDeviceList();
     void _saveSettings();
@@ -98,6 +108,7 @@ protected:
     HistoryLineEdit *_lineEdit;
     QPushButton *_sendButton;
     QSerialPort *_serialPort;
+    QTcpSocket *_tcpSocket;
     QSettings *_settings;
     ScopeDataDemux *_demux;
     QDialog *_configDialog;

@@ -84,6 +84,8 @@ protected:
     void dropEvent(QDropEvent *event);*/
     void closeEvent(QCloseEvent *event);
     bool eventFilter(QObject *obj, QEvent *event);
+    void _LogConnected();
+    void _LogDisconnected();
     bool _IsConnected() const;
     bool _IsDisconnected() const;
     void _Disconnect();

@@ -209,7 +209,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_lineEdit, &HistoryLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
     connect(_sendButton, &QPushButton::clicked, this, &MainWindow::slot_SendClicked);
     connect(_serialPort, &QSerialPort::readyRead, this, &MainWindow::slot_SerialDataReceived);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 8, 0))
     connect(_serialPort, &QSerialPort::errorOccurred, this, &MainWindow::slot_SerialErrorOccurred);
+#endif
     // connect(_serialPort, &QSerialPort::readChannelFinished, this, &MainWindow::slot_SerialPortClosed); // NOTE: doesn't seem to actually work
     connect(_tcpSocket, &QTcpSocket::stateChanged, this, &MainWindow::slot_SocketStateChanged);
     connect(_tcpSocket, &QTcpSocket::readyRead, this, &MainWindow::slot_SocketDataReceived);
@@ -232,6 +234,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    _tcpSocket->abort();
 }
 
 void MainWindow::slot_PortListClicked()
@@ -296,8 +299,7 @@ void MainWindow::slot_ConnectClicked()
             QMessageBox::critical(this, "Error opening serial port", "Unable to open port \"" + portName + "\"");
             return;
         }
-        AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">connected</font>");
-        AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+        _LogConnected();
         slot_UpdateButtons();
     }
     else // must be IP (or maybe even hostname?)
@@ -317,6 +319,7 @@ void MainWindow::slot_ConnectClicked()
 
 void MainWindow::slot_DisconnectClicked()
 {
+    const bool wasSerialConnection = _serialPort->isOpen();
     if (_IsDisconnected())
     {
         QMessageBox::critical(this, "Error disconnecting", "Already disconnected!");
@@ -325,7 +328,7 @@ void MainWindow::slot_DisconnectClicked()
     _Disconnect();
     if (!_IsDisconnected())
     {
-        if (_serialPort->isOpen())
+        if (wasSerialConnection)
         {
             QMessageBox::critical(this, "Error closing serial port", "Unknown reason -- it is open, but cannot be closed?");
         }
@@ -339,8 +342,10 @@ void MainWindow::slot_DisconnectClicked()
         }
         return;
     }
-    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
-    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+    if (wasSerialConnection)
+    {
+        _LogDisconnected();
+    }
     slot_UpdateButtons();
 }
 
@@ -510,8 +515,7 @@ void MainWindow::slot_SerialErrorOccurred(QSerialPort::SerialPortError error)
         const bool after = _IsConnected();
         if (before != after)
         {
-            AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
-            AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+            _LogDisconnected();
         }
         _RepopulateDeviceList();
         slot_UpdateButtons();
@@ -531,6 +535,14 @@ void MainWindow::slot_SerialDataReceived()
 void MainWindow::slot_SocketStateChanged(QAbstractSocket::SocketState socketState)
 {
     Q_UNUSED(socketState);
+    if (socketState == QAbstractSocket::ConnectedState)
+    {
+        _LogConnected();
+    }
+    else if (socketState == QAbstractSocket::UnconnectedState)
+    {
+        _LogDisconnected();
+    }
     slot_UpdateButtons();
 }
 
@@ -644,6 +656,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     return QObject::eventFilter(obj, event);
 }
 
+void MainWindow::_LogConnected()
+{
+    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">connected</font>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+}
+
+void MainWindow::_LogDisconnected()
+{
+    AppendTextToEdit(*_textLog, &QTextEdit::insertHtml, "<font color=\"FireBrick\">disconnected</font>");
+    AppendTextToEdit(*_textLog, &QTextEdit::insertPlainText, "\n");
+}
+
 bool MainWindow::_IsConnected() const
 {
     // return _serialPort->isOpen() || _tcpSocket->isOpen();
@@ -664,8 +688,7 @@ void MainWindow::_Disconnect()
     }
     else // it must be the network connection
     {
-        _tcpSocket->close();
-        // _tcpSocket->disconnectFromHost();
+        _tcpSocket->abort(); // close() and disconnectFromHost() were tried before
     }
 }
 

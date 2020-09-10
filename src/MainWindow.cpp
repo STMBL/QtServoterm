@@ -45,6 +45,7 @@
 #include "XYOscilloscope.h"
 #include "HistoryLineEdit.h"
 #include "ScopeDataDemux.h"
+//#include "stmbl_config_crc32.h"
 
 #include <limits>
 
@@ -80,6 +81,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _configEdit(new QPlainTextEdit),
     _configSaveButton(new QPushButton("Save")),
     _configSizeLabel(new QLabel),
+    _configChecksumLabel(new QLabel),
     _estopShortcut(new QShortcut(QKeySequence("Esc"), this)),
     _redirectingTimer(new QTimer(this)),
     _serialSendTimer(new QTimer(this)),
@@ -114,6 +116,8 @@ MainWindow::MainWindow(QWidget *parent) :
         f.setStyleHint(QFont::Monospace);
         _lineEdit->setFont(f);
         _configEdit->setFont(f); // TODO this is a bit out of place, but should work just fine
+        _configSizeLabel->setFont(f);
+        _configChecksumLabel->setFont(f);
     }
     setAcceptDrops(true);
     qApp->installEventFilter(this);
@@ -122,6 +126,9 @@ MainWindow::MainWindow(QWidget *parent) :
     _configSizeLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     _configSizeLabel->setAlignment((_configSizeLabel->alignment() & ~Qt::AlignHorizontal_Mask) | Qt::AlignRight);
     _configSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    _configChecksumLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    _configChecksumLabel->setAlignment((_configChecksumLabel->alignment() & ~Qt::AlignHorizontal_Mask) | Qt::AlignRight);
+    _configChecksumLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     _redirectingTimer->setInterval(100);
     _redirectingTimer->setSingleShot(true);
     _serialSendTimer->setInterval(50);
@@ -147,6 +154,7 @@ MainWindow::MainWindow(QWidget *parent) :
             QHBoxLayout * const hbox = new QHBoxLayout;
             hbox->addWidget(_configSaveButton);
             hbox->addWidget(_configSizeLabel, 1);
+            hbox->addWidget(_configChecksumLabel, 1);
             vbox->addLayout(hbox);
         }
     }
@@ -570,12 +578,43 @@ void MainWindow::slot_ScopeResetReceived()
     _xyOscilloscope->resetScanning();
 }
 
+static quint32 CalculateCRC(const QByteArray &data)
+{
+    QDataStream stream(data);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    quint32 crc = 0xffffffff;
+    while (true)
+    {
+        quint32 value = 0;
+        stream >> value;
+        if (stream.status() != QDataStream::Ok)
+            break;
+        crc ^= value;
+        for (int j = 0; j < 32; j++)
+        {
+            if (crc & 0x80000000)
+               crc = (crc << 1) ^ 0x04C11DB7;
+            else
+               crc = (crc << 1);
+        }
+    }
+
+    /*const size_t len = (data.size()/4)*4;
+    stmbl_config_crc32_t crc = stmbl_config_crc32_init();
+    crc = stmbl_config_crc32_update(crc, data.data(), len);
+    crc = stmbl_config_crc32_finalize(crc);*/
+    return crc;
+}
+
 void MainWindow::slot_ConfigTextChanged()
 {
     // NOTE: the -1 is to disregard an invisible
     // "paragraph separator", see the following post:
     // https://bugreports.qt.io/browse/QTBUG-4841
-    _configSizeLabel->setText(QString::number(qMax(0, _configEdit->document()->characterCount()-1)) + " bytes");
+    _configSizeLabel->setText("Size: " + QString::number(qMax(0, _configEdit->document()->characterCount()-1)).rightJustified(6) + " bytes");
+    const QByteArray configBytes = _configEdit->document()->toPlainText().toLatin1();//.replace('\n', '\r');
+    const quint32 checksum = CalculateCRC(configBytes);
+    _configChecksumLabel->setText("CRC: " + QString::number(checksum, 16).rightJustified(8, '0'));
 }
 
 void MainWindow::slot_UpdateButtons()
@@ -793,7 +832,7 @@ void MainWindow::_RepopulateDeviceList()
 
     // remember the currently selected port so we can reselect it
     const QString oldPortName = _portList->currentText();
-    
+
     // rebuild the user interface items for the selectable ports
     _portList->clear();
     _menuBar->portMenu->clear();

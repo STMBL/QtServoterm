@@ -117,6 +117,7 @@ protected:
     QPlainTextEdit *_configEdit;
     QPushButton *_configSaveButton;
     QLabel *_configSizeLabel;
+    QLabel *_configChecksumLabel;
     QShortcut *_estopShortcut;
     QTimer *_redirectingTimer;
     QTimer *_serialSendTimer;

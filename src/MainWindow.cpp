@@ -679,7 +679,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    if ((event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease))
+    if ((event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) && !_configDialog->isVisible())
     {
         QKeyEvent * const keyEvent = static_cast<QKeyEvent*>(event);
         const bool pressed = (event->type() == QEvent::KeyPress);

@@ -132,8 +132,7 @@ void ConfigDialog::slot_ConfigTextChanged()
 
 void ConfigDialog::showEvent(QShowEvent *event)
 {
-    Q_UNUSED(event); // TODO use spontaneous()
-    if (_serialConnection && _serialConnection->isConnected())
+    if (_serialConnection && _serialConnection->isConnected() && !event->spontaneous())
     {
         _configEdit->clear();
         _serialConnection->startReadingConfig();

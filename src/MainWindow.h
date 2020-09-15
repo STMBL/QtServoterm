@@ -22,18 +22,13 @@
 
 #include <QMainWindow>
 #include <QStringList>
-#include <QSerialPort>
-#include <QAbstractSocket>
 
 QT_BEGIN_NAMESPACE
 class QPushButton;
 class QCheckBox;
 class QTextEdit;
-class QPlainTextEdit;
-class QLabel;
 class QShortcut;
 class QSettings;
-class QTcpSocket;
 QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
@@ -41,10 +36,11 @@ namespace STMBL_Servoterm {
 class Actions;
 class MenuBar;
 class ClickableComboBox;
+class ConfigDialog;
 class Oscilloscope;
 class XYOscilloscope;
 class HistoryLineEdit;
-class ScopeDataDemux;
+class SerialConnection;
 
 class MainWindow : public QMainWindow
 {
@@ -62,40 +58,27 @@ protected slots:
     void slot_DisableClicked();
     void slot_EnableClicked();
     void slot_JogToggled(bool on);
-    void slot_ConfigClicked();
-    void slot_SaveClicked();
-    void slot_ConfigReceiveTimeout();
-    void slot_SerialSendFromQueue();
     void slot_SendClicked();
-    void slot_SerialErrorOccurred(QSerialPort::SerialPortError error);
-    void slot_SerialDataReceived();
-    // void slot_SerialPortClosed();
-    void slot_SocketStateChanged(QAbstractSocket::SocketState socketState);
-    void slot_SocketErrorOccurred(QAbstractSocket::SocketError error);
-    void slot_SocketDataReceived();
+    void slot_SerialConnected();
+    void slot_SerialDisconnected();
+    void slot_LogLine(const QString &line);
+    void slot_LogError(const QString &errorMessage);
     void slot_ScopePacketReceived(const QVector<float> &packet);
     void slot_ScopeResetReceived();
-    void slot_ConfigTextChanged();
     void slot_UpdateButtons();
 protected:
-    /*void dragEnterEvent(QDragEnterEvent *event);
+    void dragEnterEvent(QDragEnterEvent *event);
     void dragMoveEvent(QDragMoveEvent *event);
     void dragLeaveEvent(QDragLeaveEvent *event);
-    void dropEvent(QDropEvent *event);*/
+    void dropEvent(QDropEvent *event);
     void closeEvent(QCloseEvent *event);
     bool eventFilter(QObject *obj, QEvent *event);
-    void _LogConnected();
-    void _LogDisconnected();
-    bool _IsConnected() const;
-    bool _IsDisconnected() const;
-    void _Disconnect();
-    void _HandleReceivedData(const QByteArray &data);
-    void _SendData(const QByteArray &data);
     void _DoJogging();
     void _RepopulateDeviceList();
     void _saveSettings();
     void _loadSettings();
 
+    SerialConnection *_serialConnection;
     Actions *_actions;
     MenuBar *_menuBar;
     ClickableComboBox *_portList;
@@ -109,20 +92,10 @@ protected:
     QTextEdit *_textLog;
     HistoryLineEdit *_lineEdit;
     QPushButton *_sendButton;
-    QSerialPort *_serialPort;
-    QTcpSocket *_tcpSocket;
     QSettings *_settings;
-    ScopeDataDemux *_demux;
-    QDialog *_configDialog;
-    QPlainTextEdit *_configEdit;
-    QPushButton *_configSaveButton;
-    QLabel *_configSizeLabel;
-    QLabel *_configChecksumLabel;
+    ConfigDialog *_configDialog;
+    
     QShortcut *_estopShortcut;
-    QTimer *_redirectingTimer;
-    QTimer *_serialSendTimer;
-    QStringList _txQueue;
-    bool _redirectingToConfigEdit;
     bool _leftPressed;
     bool _rightPressed;
     enum JogState

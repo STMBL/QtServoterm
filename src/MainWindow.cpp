@@ -356,18 +356,55 @@ void MainWindow::dropEvent(QDropEvent *event)
     // check for our needed mime type, here a file or a list of files
     if (mimeData->hasUrls())
     {
-        QStringList pathList;
-        QList<QUrl> urlList = mimeData->urls();
-
         // extract the local paths of the files
-        for (int i = 0; i < urlList.size() && i < 32; ++i)
+        QStringList pathList;
         {
-            pathList.append(urlList.at(i).toLocalFile());
+            const QList<QUrl> urlList = mimeData->urls();
+            for (int i = 0; i < urlList.size() && i < 32; ++i)
+            {
+                pathList.append(urlList.at(i).toLocalFile());
+            }
         }
 
-        // call a function to open the files
-        qDebug() << pathList;
-        // openFiles(pathList);
+        // send the files
+        QElapsedTimer timer;
+        QProgressDialog progress(this);
+        progress.setMinimumDuration(0);
+        progress.setWindowModality(Qt::WindowModal);
+        for (QStringList::const_iterator path_it = pathList.begin(); path_it != pathList.end() && !progress.wasCanceled(); ++path_it)
+        {
+            // get the file path
+            const QString fileName = QFileInfo(*path_it).fileName();
+
+            // read the file
+            QFile file(*path_it);
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            {
+                QMessageBox::critical(this, "Error sending file", "Couldn't open \"" + *path_it + "\"");
+                continue;
+            }
+
+            // break into lines to be sent rate-limited
+            const QList<QByteArray> lines = file.readAll().split('\n');
+            progress.setLabelText("Sending \"" + fileName + "\"...");
+            // slot_LogLine("Sending \"" + fileName + "\"...\n");
+            progress.setValue(0);
+            progress.setMaximum(lines.size());
+            for (QList<QByteArray>::const_iterator line_it = lines.begin(); line_it != lines.end() && !progress.wasCanceled(); ++line_it)
+            {
+                if (!line_it->isEmpty())
+                {
+                    timer.start();
+                    _serialConnection->sendData(*line_it + '\n');
+                    while (timer.elapsed() < 50)
+                    {
+                        QThread::msleep(1);
+                        QCoreApplication::processEvents();
+                    }
+                }
+                progress.setValue(progress.value()+1);
+            }
+        }
     }
 }
 

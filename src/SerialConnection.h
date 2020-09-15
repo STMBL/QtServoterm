@@ -51,6 +51,7 @@ public:
     void connectTo(const QString &portName);
     void disconnectFrom();
     void sendData(const QByteArray &data);
+    void sendConfig(const QString &data);
     void startReadingConfig();
 signals:
     void lineReceived(const QString &line);

@@ -190,6 +190,20 @@ void SerialConnection::sendData(const QByteArray &data)
     }
 }
 
+void SerialConnection::sendConfig(const QString &config)
+{
+    const QStringList lines = config.split('\n', QString::KeepEmptyParts);
+    _txQueue.clear();
+    _txQueue.append("deleteconf");
+    for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
+    {
+        _txQueue.append(QString("appendconf ") + *it);
+    }
+    _txQueue.append("flashsaveconf");
+    _serialSendTimer->start();
+    slot_SerialSendFromQueue();
+}
+
 void SerialConnection::startReadingConfig()
 {
     _redirectingToConfigEdit = true;

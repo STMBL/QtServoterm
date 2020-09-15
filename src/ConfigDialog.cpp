@@ -75,20 +75,11 @@ void ConfigDialog::appendConfigLine(const QString &configLine)
 
 void ConfigDialog::slot_SaveClicked()
 {
-    /*if (_IsConnected())
+    if (_serialConnection->isConnected())
     {
-        _configDialog->hide();
-        const QStringList lines = _configEdit->document()->toPlainText().split('\n', QString::KeepEmptyParts);
-        _txQueue.clear();
-        _txQueue.append("deleteconf");
-        for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
-        {
-            _txQueue.append(QString("appendconf ") + *it);
-        }
-        _txQueue.append("flashsaveconf");
-        _serialSendTimer->start();
-        slot_SerialSendFromQueue();
-    }*/
+        _serialConnection->sendConfig(_configEdit->document()->toPlainText());
+        hide();
+    }
 }
 
 static quint32 CalculateCRC(const QByteArray &data)

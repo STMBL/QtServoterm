@@ -29,6 +29,7 @@ class QCheckBox;
 class QTextEdit;
 class QShortcut;
 class QSettings;
+class QTimer;
 QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
@@ -57,7 +58,6 @@ protected slots:
     void slot_EmergencyStop();
     void slot_DisableClicked();
     void slot_EnableClicked();
-    void slot_JogToggled(bool on);
     void slot_SendClicked();
     void slot_SerialConnected();
     void slot_SerialDisconnected();
@@ -66,6 +66,7 @@ protected slots:
     void slot_ScopePacketReceived(const QVector<float> &packet);
     void slot_ScopeResetReceived();
     void slot_UpdateButtons();
+    void slot_SendJogCommand();
 protected:
     void dragEnterEvent(QDragEnterEvent *event);
     void dragMoveEvent(QDragMoveEvent *event);
@@ -73,7 +74,6 @@ protected:
     void dropEvent(QDropEvent *event);
     void closeEvent(QCloseEvent *event);
     bool eventFilter(QObject *obj, QEvent *event);
-    void _DoJogging();
     void _RepopulateDeviceList();
     void _saveSettings();
     void _loadSettings();
@@ -94,6 +94,7 @@ protected:
     QPushButton *_sendButton;
     QSettings *_settings;
     ConfigDialog *_configDialog;
+    QTimer *_jogTimer;
     
     QShortcut *_estopShortcut;
     bool _leftPressed;

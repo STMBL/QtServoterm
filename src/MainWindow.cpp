@@ -31,6 +31,7 @@
 #include <QHBoxLayout>
 #include <QShortcut>
 #include <QMessageBox>
+#include <QTimer>
 // #include <QDebug>
 
 #include "MainWindow.h"
@@ -52,6 +53,8 @@ namespace STMBL_Servoterm {
 template<typename T, typename M>
 static void AppendTextToEdit(T &target, M insertMethod, const QString &txt);
 
+static const int SEND_JOG_COMMAND_PERIOD_MS = 250; // 250ms, which is earlier than the 750ms timeout on the STMBL drive
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     _serialConnection(new SerialConnection(this)),
@@ -70,10 +73,12 @@ MainWindow::MainWindow(QWidget *parent) :
     _sendButton(new QPushButton("Send")),
     _settings(new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName(), this)),
     _configDialog(new ConfigDialog(_serialConnection, this)),
+    _jogTimer(new QTimer(this)),
     _estopShortcut(new QShortcut(QKeySequence("Esc"), this)),
     _leftPressed(false),
     _rightPressed(false)
 {
+    _jogTimer->setInterval(SEND_JOG_COMMAND_PERIOD_MS);
     _portList->setEditable(true);
     {
         static const QString exampleIP = "xxx.xxx.xxx.xxx:yyyyy";
@@ -167,7 +172,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_clearButton, &QPushButton::clicked, _textLog, &QTextEdit::clear);
     connect(_disableButton, &QPushButton::clicked, this, &MainWindow::slot_DisableClicked);
     connect(_enableButton, &QPushButton::clicked, this, &MainWindow::slot_EnableClicked);
-    connect(_jogCheckbox, &QCheckBox::toggled, this, &MainWindow::slot_JogToggled);
+    connect(_jogCheckbox, &QCheckBox::toggled, this, &MainWindow::slot_SendJogCommand);
     connect(_configButton, &QPushButton::clicked, _configDialog, &ConfigDialog::exec);
     connect(_lineEdit, &HistoryLineEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
     connect(_lineEdit, &HistoryLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
@@ -183,6 +188,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_serialConnection, &SerialConnection::scopePacketReceived, this, &MainWindow::slot_ScopePacketReceived);
     connect(_serialConnection, &SerialConnection::scopeResetReceived, this, &MainWindow::slot_ScopeResetReceived);
     connect(_serialConnection, &SerialConnection::errorMessage, this, &MainWindow::slot_LogError);
+    connect(_jogTimer, &QTimer::timeout, this, &MainWindow::slot_SendJogCommand);
     slot_UpdateButtons();
 
     _RepopulateDeviceList();
@@ -263,12 +269,6 @@ void MainWindow::slot_EnableClicked()
     _serialConnection->sendData(QString("fault0.en = 1\n").toLatin1());
 }
 
-void MainWindow::slot_JogToggled(bool on)
-{
-    Q_UNUSED(on);
-    _DoJogging();
-}
-
 void MainWindow::slot_SendClicked()
 {
     if (!_serialConnection->isConnected())
@@ -331,6 +331,51 @@ void MainWindow::slot_UpdateButtons()
     _enableButton->setEnabled(portOpen);
     _configButton->setEnabled(portOpen);
     _sendButton->setEnabled(portOpen && hasCommand);
+}
+
+void MainWindow::slot_SendJogCommand()
+{
+    if (!_serialConnection->isConnected())
+    {
+        // _jogState = JOGGING_IDLE; // TODO set to an invalid value to force sending a sychronizing command after (re)connecting
+        return;
+    }
+
+    // determine new state
+    JogState newState = JOGGING_IDLE;
+    if (_jogCheckbox->isChecked())
+    {
+        if (_leftPressed && !_rightPressed)
+            newState = JOGGING_CCW;
+        else if (_rightPressed && !_leftPressed)
+            newState = JOGGING_CW;
+    }
+
+    // don't bother sending multiple "stop" commands in a row
+    if (newState == JOGGING_IDLE && _jogState == JOGGING_IDLE)
+        return;
+
+    // synchronize the STMBL drive to the GUI's jog state
+    _jogState = newState;
+    switch (_jogState)
+    {
+        case JOGGING_CCW:
+        _serialConnection->sendData("jogl\n");
+        break;
+
+        case JOGGING_CW:
+        _serialConnection->sendData("jogr\n");
+        break;
+
+        default:
+        _serialConnection->sendData("jogx\n");
+    }
+
+    // continue auto-repeating the jog command
+    if (newState == JOGGING_IDLE)
+        _jogTimer->stop();
+    else
+        _jogTimer->start();
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
@@ -419,6 +464,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     if ((event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) && !_configDialog->isVisible())
     {
         QKeyEvent * const keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->isAutoRepeat())
+            return QObject::eventFilter(obj, event);
         const bool pressed = (event->type() == QEvent::KeyPress);
         if (keyEvent->key() == Qt::Key_Left)
             _leftPressed = pressed;
@@ -426,48 +473,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
             _rightPressed = pressed;
         else
             return QObject::eventFilter(obj, event);
-        _DoJogging();
+        slot_SendJogCommand();
         return _jogCheckbox->isChecked();
     }
     return QObject::eventFilter(obj, event);
-}
-
-void MainWindow::_DoJogging()
-{
-    if (!_serialConnection->isConnected())
-    {
-        // _jogState = JOGGING_IDLE; // TODO set to an invalid value to force sending a sychronizing command after (re)connecting
-        return;
-    }
-
-    // determine new state
-    JogState newState = JOGGING_IDLE;
-    if (_jogCheckbox->isChecked())
-    {
-        if (_leftPressed && !_rightPressed)
-            newState = JOGGING_CCW;
-        else if (_rightPressed && !_leftPressed)
-            newState = JOGGING_CW;
-    }
-
-    // synchronize the STMBL drive to the GUI's jog state
-    if (newState != _jogState)
-    {
-        _jogState = newState;
-        switch (_jogState)
-        {
-            case JOGGING_CCW:
-            _serialConnection->sendData("jogl\n");
-            break;
-
-            case JOGGING_CW:
-            _serialConnection->sendData("jogr\n");
-            break;
-
-            default:
-            _serialConnection->sendData("jogx\n");
-        }
-    }
 }
 
 void MainWindow::_RepopulateDeviceList()

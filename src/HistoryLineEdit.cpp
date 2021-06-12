@@ -37,14 +37,39 @@ void HistoryLineEdit::saveLine()
     if (line.isEmpty())
         return;
     // prevent duplicate entries
-    if (_history.size() >= 2 && _history.at(1) == line)
-        return;
-    // make sure we don't go over MAX_HISTORY entries
-    // (+1 for the "stash" for the newest line)
-    if (_history.size() >= MAX_HISTORY+1)
-        _history.pop_back();
-    _history.insert(1, line);
+    if (_history.size() < 2 || _history.at(1) != line)
+    {
+        // make sure we don't go over MAX_HISTORY entries
+        // (+1 for the "stash" for the newest line)
+        if (_history.size() >= MAX_HISTORY+1)
+            _history.pop_back();
+        _history.insert(1, line);
+    }
     _current = _history.begin();
+}
+
+void HistoryLineEdit::prevLine()
+{
+    if (!_history.isEmpty() && _current != (_history.end()-1))
+    {
+        if (_current == _history.begin())
+        {
+            // whenever we leave the first "history" item
+            // we stash the "new" text being edited in it
+            *_current = text();
+        }
+        ++_current;
+        setText(*_current);
+    }
+}
+
+void HistoryLineEdit::nextLine()
+{
+    if (!_history.isEmpty() && _current != _history.begin())
+    {
+        --_current;
+        setText(*_current);
+    }
 }
 
 void HistoryLineEdit::keyPressEvent(QKeyEvent *event)
@@ -52,26 +77,12 @@ void HistoryLineEdit::keyPressEvent(QKeyEvent *event)
     if (event->key() == Qt::Key_Up)
     {
         event->accept();
-        if (!_history.isEmpty() && _current != (_history.end()-1))
-        {
-            if (_current == _history.begin())
-            {
-                // whenever we leave the first "history" item
-                // we stash the "new" text being edited in it
-                *_current = text();
-            }
-            ++_current;
-            setText(*_current);
-        }
+        prevLine();
     }
     else if (event->key() == Qt::Key_Down)
     {
         event->accept();
-        if (!_history.isEmpty() && _current != _history.begin())
-        {
-            --_current;
-            setText(*_current);
-        }
+        nextLine();
     }
     else
         QLineEdit::keyPressEvent(event);

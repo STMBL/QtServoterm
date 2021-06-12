@@ -34,6 +34,8 @@ public:
     HistoryLineEdit(QWidget *widget = nullptr);
     void saveLine();
 protected:
+    void prevLine();
+    void nextLine();
     void keyPressEvent(QKeyEvent *event);
     void keyReleaseEvent(QKeyEvent *event);
     

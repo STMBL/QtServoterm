@@ -26,9 +26,15 @@ Actions::Actions(QObject *parent) : QObject(parent)
     fileQuit = new QAction("&Quit", this);
     connectionConnect = new QAction("Connect", this);
     connectionDisconnect = new QAction("Disconnect", this);
+    driveEnable = new QAction("Enable", this);
+    driveDisable = new QAction("Disable", this);
+    driveJogEnable = new QAction("Jog", this);
+    driveEditConfig = new QAction("Config", this);
     viewOscilloscope = new QAction("Show Oscilloscope", this);
     viewXYScope = new QAction("Show X/Y Scope", this);
     viewConsole = new QAction("Show Console Output", this); // TODO change this to "Show Console"
+    viewClearConsole = new QAction("Clear", this); // TODO change this to "Clear Console"?
+    driveJogEnable->setCheckable(true);
     viewOscilloscope->setCheckable(true);
     viewXYScope->setCheckable(true);
     viewConsole->setCheckable(true);

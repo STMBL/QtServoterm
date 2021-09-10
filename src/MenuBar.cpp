@@ -35,10 +35,20 @@ MenuBar::MenuBar(Actions *actions, QWidget *parent) : QMenuBar(parent)
     portGroup = new QActionGroup(this);
     portGroup->setExclusive(true);
 
+    QMenu * const driveMenu = addMenu("Drive");
+    driveMenu->addAction(actions->driveEnable);
+    driveMenu->addAction(actions->driveDisable);
+    driveMenu->addSeparator();
+    driveMenu->addAction(actions->driveJogEnable);
+    driveMenu->addSeparator();
+    driveMenu->addAction(actions->driveEditConfig);
+
     QMenu * const viewMenu = addMenu("&View");
     viewMenu->addAction(actions->viewOscilloscope);
     viewMenu->addAction(actions->viewXYScope);
     viewMenu->addAction(actions->viewConsole);
+    viewMenu->addSeparator();
+    viewMenu->addAction(actions->viewClearConsole);
 }
 
 } // namespace STMBL_Servoterm

@@ -82,11 +82,6 @@ protected:
     Actions *_actions;
     MenuBar *_menuBar;
     ClickableComboBox *_portList;
-    QPushButton *_clearButton;
-    QPushButton *_disableButton;
-    QPushButton *_enableButton;
-    QCheckBox *_jogCheckbox;
-    QPushButton *_configButton;
     Oscilloscope *_oscilloscope;
     XYOscilloscope *_xyOscilloscope;
     QTextEdit *_textLog;

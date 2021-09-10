@@ -61,11 +61,6 @@ MainWindow::MainWindow(QWidget *parent) :
     _actions(new Actions(this)),
     _menuBar(new MenuBar(_actions, this)),
     _portList(new ClickableComboBox),
-    _clearButton(new QPushButton("Clear")),
-    _disableButton(new QPushButton("Disable")),
-    _enableButton(new QPushButton("Enable")),
-    _jogCheckbox(new QCheckBox("Jog")),
-    _configButton(new QPushButton("Config")),
     _oscilloscope(new Oscilloscope),
     _xyOscilloscope(new XYOscilloscope),
     _textLog(new QTextEdit),
@@ -131,13 +126,13 @@ MainWindow::MainWindow(QWidget *parent) :
         toolbar->addAction(_actions->connectionConnect);
         toolbar->addAction(_actions->connectionDisconnect);
         toolbar->addSeparator();
-        toolbar->addWidget(_clearButton);
+        toolbar->addAction(_actions->viewClearConsole);
         toolbar->addSeparator();
-        toolbar->addWidget(_disableButton);
-        toolbar->addWidget(_enableButton);
-        toolbar->addWidget(_jogCheckbox);
+        toolbar->addAction(_actions->driveDisable);
+        toolbar->addAction(_actions->driveEnable);
+        toolbar->addAction(_actions->driveJogEnable);
         toolbar->addAction(_actions->viewXYScope);
-        toolbar->addWidget(_configButton);
+        toolbar->addAction(_actions->driveEditConfig);
         addToolBar(toolbar);
     }
     {
@@ -169,11 +164,11 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_portList, &ClickableComboBox::currentTextChanged, this, &MainWindow::slot_PortLineEditChanged);
     connect(_actions->connectionConnect, &QAction::triggered, this, &MainWindow::slot_ConnectClicked);
     connect(_actions->connectionDisconnect, &QAction::triggered, this, &MainWindow::slot_DisconnectClicked);
-    connect(_clearButton, &QPushButton::clicked, _textLog, &QTextEdit::clear);
-    connect(_disableButton, &QPushButton::clicked, this, &MainWindow::slot_DisableClicked);
-    connect(_enableButton, &QPushButton::clicked, this, &MainWindow::slot_EnableClicked);
-    connect(_jogCheckbox, &QCheckBox::toggled, this, &MainWindow::slot_SendJogCommand);
-    connect(_configButton, &QPushButton::clicked, _configDialog, &ConfigDialog::exec);
+    connect(_actions->viewClearConsole, &QAction::triggered, _textLog, &QTextEdit::clear);
+    connect(_actions->driveDisable, &QAction::triggered, this, &MainWindow::slot_DisableClicked);
+    connect(_actions->driveEnable, &QAction::triggered, this, &MainWindow::slot_EnableClicked);
+    connect(_actions->driveJogEnable, &QAction::toggled, this, &MainWindow::slot_SendJogCommand);
+    connect(_actions->driveEditConfig, &QAction::triggered, _configDialog, &ConfigDialog::exec);
     connect(_lineEdit, &HistoryLineEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
     connect(_lineEdit, &HistoryLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
     connect(_sendButton, &QPushButton::clicked, this, &MainWindow::slot_SendClicked);
@@ -244,7 +239,7 @@ void MainWindow::slot_DisconnectClicked()
 
 void MainWindow::slot_EmergencyStop()
 {
-    _jogCheckbox->setChecked(false);
+    _actions->driveJogEnable->setChecked(false);
     slot_DisableClicked();
 }
 
@@ -327,9 +322,10 @@ void MainWindow::slot_UpdateButtons()
     _menuBar->portGroup->setEnabled(portClosed);
     _actions->connectionConnect->setEnabled(portClosed && portSelected);
     _actions->connectionDisconnect->setEnabled(!portClosed);
-    _clearButton->setEnabled(!_textLog->document()->isEmpty());
-    _enableButton->setEnabled(portOpen);
-    _configButton->setEnabled(portOpen);
+    _actions->viewClearConsole->setEnabled(!_textLog->document()->isEmpty());
+    _actions->driveEnable->setEnabled(portOpen);
+    _actions->driveDisable->setEnabled(portOpen);
+    _actions->driveEditConfig->setEnabled(portOpen);
     _sendButton->setEnabled(portOpen && hasCommand);
 }
 
@@ -343,7 +339,7 @@ void MainWindow::slot_SendJogCommand()
 
     // determine new state
     JogState newState = JOGGING_IDLE;
-    if (_jogCheckbox->isChecked())
+    if (_actions->driveJogEnable->isChecked())
     {
         if (_leftPressed && !_rightPressed)
             newState = JOGGING_CCW;
@@ -474,7 +470,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         else
             return QObject::eventFilter(obj, event);
         slot_SendJogCommand();
-        return _jogCheckbox->isChecked();
+        return _actions->driveJogEnable->isChecked();
     }
     return QObject::eventFilter(obj, event);
 }

@@ -35,9 +35,14 @@ public:
     QAction *fileQuit;
     QAction *connectionConnect;
     QAction *connectionDisconnect;
+    QAction *driveEnable;
+    QAction *driveDisable;
+    QAction *driveJogEnable;
+    QAction *driveEditConfig;
     QAction *viewOscilloscope;
     QAction *viewXYScope;
     QAction *viewConsole;
+    QAction *viewClearConsole;
 };
 
 } // namespace STMBL_Servoterm

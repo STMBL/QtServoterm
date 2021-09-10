@@ -42,6 +42,12 @@ MenuBar::MenuBar(Actions *actions, QWidget *parent) : QMenuBar(parent)
     driveMenu->addAction(actions->driveJogEnable);
     driveMenu->addSeparator();
     driveMenu->addAction(actions->driveEditConfig);
+    
+    QMenu * const dataMenu = addMenu("Data");
+    dataMenu->addAction(actions->dataRecord);
+    dataMenu->addSeparator();
+    dataMenu->addAction(actions->dataSetDirectory);
+    dataMenu->addAction(actions->dataOpenDirectory);
 
     QMenu * const viewMenu = addMenu("&View");
     viewMenu->addAction(actions->viewOscilloscope);

@@ -39,6 +39,9 @@ public:
     QAction *driveDisable;
     QAction *driveJogEnable;
     QAction *driveEditConfig;
+    QAction *dataRecord;
+    QAction *dataSetDirectory;
+    QAction *dataOpenDirectory;
     QAction *viewOscilloscope;
     QAction *viewXYScope;
     QAction *viewConsole;

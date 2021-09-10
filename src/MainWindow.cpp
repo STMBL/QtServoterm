@@ -32,6 +32,9 @@
 #include <QShortcut>
 #include <QMessageBox>
 #include <QTimer>
+#include <QFileDialog>
+#include <QFile>
+#include <QDesktopServices>
 // #include <QDebug>
 
 #include "MainWindow.h"
@@ -69,6 +72,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _settings(new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName(), this)),
     _configDialog(new ConfigDialog(_serialConnection, this)),
     _jogTimer(new QTimer(this)),
+    _csvFile(new QFile(this)),
     _estopShortcut(new QShortcut(QKeySequence("Esc"), this)),
     _leftPressed(false),
     _rightPressed(false)
@@ -169,6 +173,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(_actions->driveEnable, &QAction::triggered, this, &MainWindow::slot_EnableClicked);
     connect(_actions->driveJogEnable, &QAction::toggled, this, &MainWindow::slot_SendJogCommand);
     connect(_actions->driveEditConfig, &QAction::triggered, _configDialog, &ConfigDialog::exec);
+    connect(_actions->dataRecord, &QAction::toggled, this, &MainWindow::slot_DataRecordToggled);
+    connect(_actions->dataSetDirectory, &QAction::triggered, this, &MainWindow::slot_DataSetDirectoryClicked);
+    connect(_actions->dataOpenDirectory, &QAction::triggered, this, &MainWindow::slot_DataOpenDirectoryClicked);
     connect(_lineEdit, &HistoryLineEdit::textChanged, this, &MainWindow::slot_UpdateButtons);
     connect(_lineEdit, &HistoryLineEdit::returnPressed, _sendButton, &QAbstractButton::click);
     connect(_sendButton, &QPushButton::clicked, this, &MainWindow::slot_SendClicked);
@@ -264,6 +271,49 @@ void MainWindow::slot_EnableClicked()
     _serialConnection->sendData(QString("fault0.en = 1\n").toLatin1());
 }
 
+void MainWindow::slot_DataRecordToggled(bool recording)
+{
+    // close the old file not only when stopping, but when (re)starting
+    if (_csvFile->isOpen())
+        _csvFile->close();
+    if (recording)
+    {
+        static const QString DATETIME_FORMAT = "yyyy-MM-dd_hh-mm-ss-zzz";
+        const QString basePath = _recordingsDirectory.isEmpty() ? QDir::currentPath() : _recordingsDirectory; // TODO consolidate this
+        const QString dateStr = QDateTime::currentDateTime().toString(DATETIME_FORMAT); // TODO use UTC version?
+        static const int RETRY_COUNT = 3;
+        for (int attempt = 0; !_csvFile->isOpen() && attempt < RETRY_COUNT; attempt++)
+        {
+            QString fileName = "data_" + dateStr;
+            if (attempt > 0)
+                fileName += "_" + QString::number(attempt);
+            fileName += ".csv";
+            const QString filePath = QDir::cleanPath(basePath + "/" + fileName);
+            _csvFile->setFileName(filePath);
+            _csvFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::NewOnly);
+        }
+        if (!_csvFile->isOpen())
+        {
+            QMessageBox::critical(this, "Error opening recording file", "Couldn't open \"" + _csvFile->fileName() + "\" for writing!");
+            _actions->dataRecord->setChecked(false);
+            return;
+        }
+    }
+}
+
+void MainWindow::slot_DataSetDirectoryClicked()
+{
+    const QString dirPath = QFileDialog::getExistingDirectory(this, tr("Open Directory"), _recordingsDirectory, QFileDialog::ShowDirsOnly);
+    if (dirPath.isEmpty())
+        return;
+    _recordingsDirectory = dirPath;
+}
+
+void MainWindow::slot_DataOpenDirectoryClicked()
+{
+    QDesktopServices::openUrl(QUrl::fromLocalFile(_recordingsDirectory.isEmpty() ? QDir::currentPath() : _recordingsDirectory)); // TODO consolidate this
+}
+
 void MainWindow::slot_SendClicked()
 {
     if (!_serialConnection->isConnected())
@@ -304,6 +354,15 @@ void MainWindow::slot_ScopePacketReceived(const QVector<float> &packet)
 {
     _oscilloscope->addChannelsSample(packet);
     _xyOscilloscope->addChannelsSample(packet);
+    if (_csvFile->isOpen() && !packet.isEmpty())
+    {
+        QStringList fields;
+        for (QVector<float>::const_iterator it = packet.begin(); it != packet.end(); ++it)
+        {
+            fields.append(QString::number(*it, 'f'));
+        }
+        _csvFile->write((fields.join(',') + "\n").toUtf8());
+    }
 }
 
 void MainWindow::slot_ScopeResetReceived()
@@ -326,6 +385,9 @@ void MainWindow::slot_UpdateButtons()
     _actions->driveEnable->setEnabled(portOpen);
     _actions->driveDisable->setEnabled(portOpen);
     _actions->driveEditConfig->setEnabled(portOpen);
+    _actions->dataRecord->setEnabled(portOpen);
+    if (!portOpen)
+        _actions->dataRecord->setChecked(false);
     _sendButton->setEnabled(portOpen && hasCommand);
 }
 

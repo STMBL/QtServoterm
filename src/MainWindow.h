@@ -30,6 +30,7 @@ class QTextEdit;
 class QShortcut;
 class QSettings;
 class QTimer;
+class QFile;
 QT_END_NAMESPACE
 
 namespace STMBL_Servoterm {
@@ -58,6 +59,9 @@ protected slots:
     void slot_EmergencyStop();
     void slot_DisableClicked();
     void slot_EnableClicked();
+    void slot_DataRecordToggled(bool recording);
+    void slot_DataSetDirectoryClicked();
+    void slot_DataOpenDirectoryClicked();
     void slot_SendClicked();
     void slot_SerialConnected();
     void slot_SerialDisconnected();
@@ -90,6 +94,7 @@ protected:
     QSettings *_settings;
     ConfigDialog *_configDialog;
     QTimer *_jogTimer;
+    QFile *_csvFile;
     
     QShortcut *_estopShortcut;
     bool _leftPressed;
@@ -100,6 +105,7 @@ protected:
         JOGGING_CW,
         JOGGING_CCW
     } _jogState;
+    QString _recordingsDirectory;
 };
 
 } // namespace STMBL_Servoterm

@@ -30,11 +30,15 @@ Actions::Actions(QObject *parent) : QObject(parent)
     driveDisable = new QAction("Disable", this);
     driveJogEnable = new QAction("Jog", this);
     driveEditConfig = new QAction("Config", this);
+    dataRecord = new QAction("Record", this);
+    dataSetDirectory = new QAction("Set Directory...", this);
+    dataOpenDirectory = new QAction("Open Directory (in File Manager)", this);
     viewOscilloscope = new QAction("Show Oscilloscope", this);
     viewXYScope = new QAction("Show X/Y Scope", this);
     viewConsole = new QAction("Show Console Output", this); // TODO change this to "Show Console"
     viewClearConsole = new QAction("Clear", this); // TODO change this to "Clear Console"?
     driveJogEnable->setCheckable(true);
+    dataRecord->setCheckable(true);
     viewOscilloscope->setCheckable(true);
     viewXYScope->setCheckable(true);
     viewConsole->setCheckable(true);

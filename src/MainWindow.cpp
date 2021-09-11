@@ -33,6 +33,7 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFile>
 #include <QDesktopServices>
 // #include <QDebug>
@@ -290,7 +291,13 @@ void MainWindow::slot_DataRecordToggled(bool recording)
             fileName += ".csv";
             const QString filePath = QDir::cleanPath(basePath + "/" + fileName);
             _csvFile->setFileName(filePath);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
             _csvFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::NewOnly);
+#else
+            if (QFileInfo::exists(_csvFile->fileName()))
+                continue;
+            _csvFile->open(QIODevice::WriteOnly | QIODevice::Text);
+#endif
         }
         if (!_csvFile->isOpen())
         {

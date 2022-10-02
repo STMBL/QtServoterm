@@ -28,13 +28,12 @@ jobs:
     steps:
 
     - name: '🧰 Checkout'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
 
     - name: '${{ matrix.icon }} Setup MSYS2'
-      run:
-        shell: msys2 {0}
+      uses: msys2/setup-msys2@v2
       with:
         msystem: ${{matrix.sys}}
         update: true

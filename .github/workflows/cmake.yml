@@ -33,6 +33,8 @@ jobs:
         fetch-depth: 0
 
     - name: '${{ matrix.icon }} Setup MSYS2'
+      run:
+        shell: msys2 {0}
       with:
         msystem: ${{matrix.sys}}
         update: true

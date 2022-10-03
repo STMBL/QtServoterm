@@ -192,7 +192,7 @@ void SerialConnection::sendData(const QByteArray &data)
 
 void SerialConnection::sendConfig(const QString &config)
 {
-    const QStringList lines = config.split('\n', QString::KeepEmptyParts);
+    const QStringList lines = config.split('\n', Qt::KeepEmptyParts);
     _txQueue.clear();
     _txQueue.append("deleteconf");
     for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)

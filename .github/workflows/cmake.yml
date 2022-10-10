@@ -49,7 +49,6 @@ jobs:
       run: |
         /${{matrix.sys}}/qt5-static/bin/qmake
         make
-        tree
     - uses: actions/upload-artifact@v3
       with:
         name: bin

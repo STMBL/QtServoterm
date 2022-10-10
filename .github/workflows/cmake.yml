@@ -47,7 +47,7 @@ jobs:
           ninja:p
     - name: '🚧 Build TOOL'
       run: |
-        /msys64/${{matrix.sys}}/qt5-static/bin/qmake
+        /${{matrix.sys}}/qt5-static/bin/qmake
         make
         tree
     - uses: actions/upload-artifact@v3

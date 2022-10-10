@@ -43,9 +43,15 @@ jobs:
         pacboy: >-
           toolchain:p
           cmake:p
-          qt5:p
+          qt5-static:p
           ninja:p
     - name: '🚧 Build TOOL'
       run: |
-        cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release
-        cmake --build build
+        msys64/${{matrix.sys}}/qt5-static/bin/qmake
+        make
+        tree
+    - uses: actions/upload-artifact@v3
+      with:
+        name: bin
+        path: |
+          release/Servoterm.exe

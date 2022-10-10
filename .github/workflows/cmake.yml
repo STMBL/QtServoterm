@@ -51,6 +51,6 @@ jobs:
         make
     - uses: actions/upload-artifact@v3
       with:
-        name: bin
+        name: bin-${{matrix.sys}}
         path: |
           release/Servoterm.exe

@@ -34,7 +34,12 @@ static void AppendTextToEdit(T &target, M insertMethod, const QString &txt)
         // where QTextEdit (or QTextDocument?) effectively
         // deletes trailing HTML <br/>'s, so we must use
         // plain text newlines to trick it
-        const QStringList lines = txt.split("\n", Qt::KeepEmptyParts);
+        const QStringList lines = txt.split("\n",
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+            Qt::KeepEmptyParts);
+#else
+            QString::KeepEmptyParts);
+#endif
         for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)
         {
             target.moveCursor(QTextCursor::End);

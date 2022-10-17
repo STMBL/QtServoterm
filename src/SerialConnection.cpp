@@ -53,10 +53,10 @@ QStringList SerialConnection::getSerialPortNames()
     QStringList portNames;
     for (QList<QSerialPortInfo>::const_iterator it = ports.begin(); it != ports.end(); ++it)
     {
-        if (it->manufacturer().contains("STMicroelectronics")
+        /*if (it->manufacturer().contains("STMicroelectronics")
          || it->description().contains("STMBL")
          || (it->vendorIdentifier() == STMBL_USB_VENDOR_ID
-          && it->productIdentifier()== STMBL_USB_PRODUCT_ID))
+          && it->productIdentifier()== STMBL_USB_PRODUCT_ID))*/
         {
             portNames.append(it->portName());
         }
@@ -125,6 +125,7 @@ void SerialConnection::connectTo(const QString &portName)
             return;
         }
         _serialPort->setPortName(portName);
+        _serialPort->setBaudRate(115200);
         if (!_serialPort->open(QIODevice::ReadWrite))
         {
             QMessageBox::critical(nullptr, "Error opening serial port", "Unable to open port \"" + portName + "\"");
@@ -192,7 +193,12 @@ void SerialConnection::sendData(const QByteArray &data)
 
 void SerialConnection::sendConfig(const QString &config)
 {
-    const QStringList lines = config.split('\n', Qt::KeepEmptyParts);
+    const QStringList lines = config.split('\n',
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        Qt::KeepEmptyParts);
+#else
+        QString::KeepEmptyParts);
+#endif
     _txQueue.clear();
     _txQueue.append("deleteconf");
     for (QStringList::const_iterator it = lines.begin(); it != lines.end(); ++it)

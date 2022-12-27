@@ -21,7 +21,6 @@ jobs:
           - { icon: '🟦', sys: mingw64 }
           - { icon: '🟨', sys: ucrt64  } # Experimental!
           - { icon: '🟧', sys: clang64 } # Experimental!
-          - { icon: '💪', sys: clangarm64 } # Experimental!
     name: 🚧${{ matrix.icon }} ${{ matrix.sys }}
     defaults:
       run:
